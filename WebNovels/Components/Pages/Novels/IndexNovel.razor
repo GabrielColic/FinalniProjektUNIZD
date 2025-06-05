@@ -1,0 +1,51 @@
+﻿@page "/novels"
+@using Microsoft.EntityFrameworkCore
+@using WebNovels.Data
+@using WebNovels.Models
+@inject ApplicationDbContext Db
+
+<h2>All Novels</h2>
+
+<a class="btn btn-primary mb-3" href="/novels/create">Create New Novel</a>
+
+@if (novels == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var novel in novels)
+            {
+                <tr>
+                    <td>@novel.Title</td>
+                    <td>@novel.AuthorId</td>
+                    <td>@novel.CreatedAt.ToShortDateString()</td>
+                    <td>
+                        <a href="/novels/details/@novel.Id">View</a> |
+                        <a href="/novels/edit/@novel.Id">Edit</a> |
+                        <a href="/novels/delete/@novel.Id">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Novel> novels;
+
+    protected override async Task OnInitializedAsync()
+    {
+        novels = await Db.Novels.ToListAsync();
+    }
+}

@@ -1,0 +1,37 @@
+﻿@page "/novels/create"
+@using WebNovels.Data
+@using WebNovels.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+
+<h2>Create New Novel</h2>
+
+<EditForm Model="@novel" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Title</label>
+        <InputText class="form-control" @bind-Value="novel.Title" />
+    </div>
+
+    <div class="mb-3">
+        <label>Synopsis</label>
+        <InputTextArea class="form-control" @bind-Value="novel.Synopsis" />
+    </div>
+
+    <button class="btn btn-success" type="submit">Save</button>
+</EditForm>
+
+@code {
+    private Novel novel = new Novel();
+
+    private async Task HandleValidSubmit()
+    {
+        // Temporary AuthorId (replace with logged-in user later)
+        novel.AuthorId = "temp-author-id";
+        Db.Novels.Add(novel);
+        await Db.SaveChangesAsync();
+        Navigation.NavigateTo("/novels");
+    }
+}
