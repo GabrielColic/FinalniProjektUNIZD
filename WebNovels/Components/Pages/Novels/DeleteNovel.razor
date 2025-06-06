@@ -4,6 +4,7 @@
 @using WebNovels.Models
 @inject ApplicationDbContext Db
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -29,7 +30,17 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        novel = await Db.Novels.FirstOrDefaultAsync(n => n.Id == id);
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        novel = await Db.Novels.Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+
+        if (novel == null || novel.AuthorId != currentUserId)
+        {
+            Navigation.NavigateTo("/novels");
+            return;
+        }
     }
 
     private async Task Delete()

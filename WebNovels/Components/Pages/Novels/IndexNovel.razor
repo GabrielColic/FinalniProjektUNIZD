@@ -3,6 +3,7 @@
 @using WebNovels.Data
 @using WebNovels.Models
 @inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 
@@ -33,9 +34,12 @@ else
                     <td>@novel.Author?.UserName</td>
                     <td>@novel.CreatedAt.ToShortDateString()</td>
                     <td>
-                        <a href="/novels/details/@novel.Id">View</a> |
-                        <a href="/novels/edit/@novel.Id">Edit</a> |
-                        <a href="/novels/delete/@novel.Id">Delete</a>
+                        <a href="/novels/details/@novel.Id">View</a>
+                        @if (novel.AuthorId == currentUserId)
+                        {
+                            <text> | <a href="/novels/edit/@novel.Id">Edit</a> | <a href="/novels/delete/@novel.Id">Delete</a></text>
+                        }
+
                     </td>
                 </tr>
             }
@@ -46,8 +50,14 @@ else
 @code {
     private List<Novel> novels;
 
+    private string currentUserId;
+
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
         novels = await Db.Novels
             .Include(n => n.Author)
             .ToListAsync();
