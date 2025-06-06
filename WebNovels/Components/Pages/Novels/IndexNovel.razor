@@ -3,6 +3,8 @@
 @using WebNovels.Data
 @using WebNovels.Models
 @inject ApplicationDbContext Db
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 
 <h2>All Novels</h2>
 
@@ -28,7 +30,7 @@ else
             {
                 <tr>
                     <td>@novel.Title</td>
-                    <td>@novel.AuthorId</td>
+                    <td>@novel.Author?.UserName</td>
                     <td>@novel.CreatedAt.ToShortDateString()</td>
                     <td>
                         <a href="/novels/details/@novel.Id">View</a> |
@@ -46,6 +48,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        novels = await Db.Novels.ToListAsync();
+        novels = await Db.Novels
+            .Include(n => n.Author)
+            .ToListAsync();
     }
 }

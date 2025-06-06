@@ -1,0 +1,36 @@
+﻿@page "/novels/details/{id:int}"
+@using Microsoft.EntityFrameworkCore
+@using WebNovels.Data
+@using WebNovels.Models
+@inject ApplicationDbContext Db
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<h2>Novel Details</h2>
+
+@if (novel == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="card p-3">
+        <h4>@novel.Title</h4>
+        <p><strong>Synopsis:</strong> @novel.Synopsis</p>
+        <p><strong>Author:</strong> @novel.Author?.UserName</p>
+        <p><strong>Created At:</strong> @novel.CreatedAt.ToShortDateString()</p>
+
+        <a href="/novels/edit/@novel.Id" class="btn btn-primary me-2">Edit</a>
+        <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
+    </div>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+    private Novel novel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        novel = await Db.Novels.Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+    }
+}
