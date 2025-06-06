@@ -1,0 +1,52 @@
+﻿@using WebNovels.Data
+@using WebNovels.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+@page "/novels/edit/{id:int}"
+@rendermode InteractiveServer
+
+<h2>Edit Novel</h2>
+
+@if (novel == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <EditForm Model="@novel" OnValidSubmit="HandleValidSubmit" FormName="EditNovelForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Title</label>
+            <InputText class="form-control" @bind-Value="novel.Title" />
+        </div>
+
+        <div class="mb-3">
+            <label>Synopsis</label>
+            <InputTextArea class="form-control" @bind-Value="novel.Synopsis" />
+        </div>
+
+        <button class="btn btn-success" type="submit">Save Changes</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+    private Novel novel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        novel = await Db.Novels.FindAsync(id);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        Db.Novels.Update(novel);
+        await Db.SaveChangesAsync();
+        Navigation.NavigateTo("/novels");
+    }
+}

@@ -11,9 +11,9 @@ namespace WebNovels.Models
         [Required]
         public string Title { get; set; }
 
-        public string Synopsis { get; set; }
+        public string? Synopsis { get; set; }
 
-        public string CoverImagePath { get; set; }
+        public string? CoverImagePath { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 

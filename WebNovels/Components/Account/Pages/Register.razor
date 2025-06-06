@@ -34,6 +34,11 @@
                 <ValidationMessage For="() => Input.Email" class="text-danger" />
             </div>
             <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.UserName" class="form-control" autocomplete="name" aria-required="true" placeholder="User Name" />
+                <label for="username">User Name</label>
+                <ValidationMessage For="() => Input.UserName" class="text-danger" />
+            </div>
+            <div class="form-floating mb-3">
                 <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
                 <label for="password">Password</label>
                 <ValidationMessage For="() => Input.Password" class="text-danger" />
@@ -70,7 +75,8 @@
     {
         var user = CreateUser();
 
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+        user.UserName = Input.UserName;
+        await UserStore.SetUserNameAsync(user, Input.UserName, CancellationToken.None);
         var emailStore = GetEmailStore();
         await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
         var result = await UserManager.CreateAsync(user, Input.Password);
@@ -131,6 +137,11 @@
         [EmailAddress]
         [Display(Name = "Email")]
         public string Email { get; set; } = "";
+
+        [Required]
+        [Display(Name = "User Name")]
+        [StringLength(30, ErrorMessage = "User name must be under 30 characters.")]
+        public string UserName { get; set; } = "";
 
         [Required]
         [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]

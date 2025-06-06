@@ -1,0 +1,44 @@
+﻿@page "/novels/delete/{id:int}"
+@using Microsoft.EntityFrameworkCore
+@using WebNovels.Data
+@using WebNovels.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<h2>Delete Novel</h2>
+
+@if (novel == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="alert alert-danger">
+        <p>Are you sure you want to delete the novel "<strong>@novel.Title</strong>"?</p>
+        <button class="btn btn-danger" @onclick="Delete">Delete</button>
+        <a class="btn btn-secondary ms-2" href="/novels">Cancel</a>
+    </div>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+    private Novel novel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        novel = await Db.Novels.FirstOrDefaultAsync(n => n.Id == id);
+    }
+
+    private async Task Delete()
+    {
+        if (novel != null)
+        {
+            Db.Novels.Remove(novel);
+            await Db.SaveChangesAsync();
+            Navigation.NavigateTo("/novels");
+        }
+    }
+}

@@ -1,35 +1,52 @@
-﻿@page "/novels/create"
+﻿@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
 @using WebNovels.Data
 @using WebNovels.Models
+@inject UserManager<ApplicationUser> UserManager
 @inject ApplicationDbContext Db
 @inject NavigationManager Navigation
+@attribute [Authorize]
 
-<h2>Create New Novel</h2>
+@page "/novels/create"
+@rendermode InteractiveServer
 
-<EditForm Model="@novel" OnValidSubmit="HandleValidSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<CascadingAuthenticationState>
+    <EditForm Model="@novel" OnValidSubmit="HandleValidSubmit" FormName="CreateNovelForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
 
-    <div class="mb-3">
-        <label>Title</label>
-        <InputText class="form-control" @bind-Value="novel.Title" />
-    </div>
+        <div class="mb-3">
+            <label>Title</label>
+            <InputText class="form-control" @bind-Value="novel.Title" />
+        </div>
 
-    <div class="mb-3">
-        <label>Synopsis</label>
-        <InputTextArea class="form-control" @bind-Value="novel.Synopsis" />
-    </div>
+        <div class="mb-3">
+            <label>Synopsis</label>
+            <InputTextArea class="form-control" @bind-Value="novel.Synopsis" />
+        </div>
 
-    <button class="btn btn-success" type="submit">Save</button>
-</EditForm>
+        <button class="btn btn-success" type="submit">Save</button>
+    </EditForm>
+</CascadingAuthenticationState>
 
 @code {
     private Novel novel = new Novel();
 
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
     private async Task HandleValidSubmit()
     {
-        // Temporary AuthorId (replace with logged-in user later)
-        novel.AuthorId = "temp-author-id";
+        var authState = await AuthenticationStateTask;
+        var user = await UserManager.GetUserAsync(authState.User);
+
+        if (user == null)
+        {
+            return; // Or handle not-logged-in case
+        }
+
+        novel.AuthorId = user.Id;
         Db.Novels.Add(novel);
         await Db.SaveChangesAsync();
         Navigation.NavigateTo("/novels");
