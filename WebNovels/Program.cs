@@ -5,6 +5,7 @@ using WebNovels.Components;
 using WebNovels.Components.Account;
 using WebNovels.Data;
 using WebNovels.Models;
+using WebNovels.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 
 builder.Services.AddAuthentication(options =>
 {

@@ -5,7 +5,9 @@
 @inject ApplicationDbContext Db
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IFileUploadService FileUploadService
 @using Microsoft.AspNetCore.Authorization
+@using WebNovels.Services
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -47,6 +49,11 @@ else
     {
         if (novel != null)
         {
+            if (!string.IsNullOrEmpty(novel.CoverImagePath))
+            {
+                FileUploadService.DeleteFile(novel.CoverImagePath);
+            }
+
             Db.Novels.Remove(novel);
             await Db.SaveChangesAsync();
             Navigation.NavigateTo("/novels");

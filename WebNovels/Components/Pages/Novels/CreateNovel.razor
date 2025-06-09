@@ -3,6 +3,8 @@
 @using Microsoft.AspNetCore.Identity
 @using WebNovels.Data
 @using WebNovels.Models
+@using WebNovels.Services
+@inject IFileUploadService FileUploadService
 @inject UserManager<ApplicationUser> UserManager
 @inject ApplicationDbContext Db
 @inject NavigationManager Navigation
@@ -22,28 +24,68 @@
         </div>
 
         <div class="mb-3">
+            <label>Cover Image</label>
+            <InputFile OnChange="HandleImageUpload" />
+        </div>
+
+        <div class="mb-3">
             <label>Synopsis</label>
             <InputTextArea class="form-control" @bind-Value="novel.Synopsis" />
         </div>
 
         <button class="btn btn-success" type="submit">Save</button>
     </EditForm>
+
+    @if (!string.IsNullOrEmpty(validationError))
+    {
+        <div class="alert alert-danger">@validationError</div>
+    }
 </CascadingAuthenticationState>
 
 @code {
     private Novel novel = new Novel();
+    private IBrowserFile? uploadedFile;
+    private string? validationError;
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private void HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+    }
+
+    private async Task SaveFileAsync()
+    {
+        if (uploadedFile != null)
+        {
+            var (success, path, error) = await FileUploadService.UploadCoverImageAsync(uploadedFile, novel.CoverImagePath);
+
+            if (!success)
+            {
+                validationError = error;
+                return;
+            }
+
+            novel.CoverImagePath = path;
+        }
+    }
 
     private async Task HandleValidSubmit()
     {
         var authState = await AuthenticationStateTask;
         var user = await UserManager.GetUserAsync(authState.User);
+        validationError = null;
+        await SaveFileAsync();
+
+        if (!string.IsNullOrEmpty(validationError))
+        {
+            return;
+        }
 
         if (user == null)
         {
-            return; // Or handle not-logged-in case
+            return;
         }
 
         novel.AuthorId = user.Id;

@@ -21,6 +21,7 @@ else
     <table class="table">
         <thead>
             <tr>
+                <th>Cover Image</th>
                 <th>Title</th>
                 <th>Author</th>
                 <th>Created</th>
@@ -31,6 +32,10 @@ else
             @foreach (var novel in novels)
             {
                 <tr>
+                    <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
+                         alt="Cover"
+                         class="img-thumbnail"
+                         style="width: 150px; height: 150px; object-fit: cover;" />
                     <td>@novel.Title</td>
                     <td>@novel.Author?.UserName</td>
                     <td>@novel.CreatedAt.ToShortDateString()</td>
@@ -47,7 +52,7 @@ else
         </tbody>
     </table>
 
-    @if (totalPages > 1)
+    @if (totalPages > 0)
     {
         <nav>
             <ul class="pagination">
@@ -68,7 +73,7 @@ else
 
     private string currentUserId;
     private int currentPage = 1;
-    private int pageSize = 1;
+    private int pageSize = 10;
     private int totalPages;
 
     protected override async Task OnInitializedAsync()
