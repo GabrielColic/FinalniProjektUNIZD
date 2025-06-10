@@ -1,0 +1,52 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using WebNovels.Data
+@using WebNovels.Models
+@using Microsoft.AspNetCore.Authorization
+@inject ApplicationDbContext _context
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<div class="genre-selector">
+    @if (Genres == null)
+    {
+        <p>Loading genres...</p>
+    }
+    else
+    {
+        @foreach (var genre in Genres)
+        {
+            <div>
+                <input type="checkbox"
+                       id="genre_@genre.Id"
+                       @onchange="@(() => ToggleGenre(genre.Id))"
+                       checked="@SelectedGenreIds.Contains(genre.Id)" />
+                <label for="genre_@genre.Id">@genre.Name</label>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<Genre>? Genres;
+
+    [Parameter]
+    public List<int> SelectedGenreIds { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<List<int>> SelectedGenreIdsChanged { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Genres = await _context.Genres.OrderBy(g => g.Name).ToListAsync();
+    }
+
+    private async Task ToggleGenre(int genreId)
+    {
+        if (SelectedGenreIds.Contains(genreId))
+            SelectedGenreIds.Remove(genreId);
+        else
+            SelectedGenreIds.Add(genreId);
+
+        await SelectedGenreIdsChanged.InvokeAsync(SelectedGenreIds);
+    }
+}

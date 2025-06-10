@@ -30,6 +30,12 @@ else
         </div>
 
         <div class="mb-3">
+            <label>Genres</label>
+            <GenreSelector SelectedGenreIds="@SelectedGenreIds"
+                           SelectedGenreIdsChanged="@((ids) => SelectedGenreIds = ids)" />
+        </div>
+
+        <div class="mb-3">
             <label>Current Cover Image</label><br />
             <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
                  alt="Cover"
@@ -60,6 +66,7 @@ else
     private Novel novel;
     private IBrowserFile? uploadedFile;
     private string? validationError;
+    private List<int> SelectedGenreIds = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -67,13 +74,15 @@ else
         var user = authState.User;
         var currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-        novel = await Db.Novels.Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+        novel = await Db.Novels.Include(n => n.Genres).Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
 
         if (novel == null || novel.AuthorId != currentUserId)
         {
             Navigation.NavigateTo("/novels");
             return;
         }
+
+        SelectedGenreIds = novel.Genres.Select(g => g.Id).ToList();
     }
 
     private void HandleImageUpload(InputFileChangeEventArgs e)
@@ -105,6 +114,9 @@ else
         {
             return;
         }
+
+        novel.Genres = await Db.Genres.Where(g => SelectedGenreIds.Contains(g.Id)).ToListAsync();
+
         Db.Novels.Update(novel);
         await Db.SaveChangesAsync();
         Navigation.NavigateTo("/novels");

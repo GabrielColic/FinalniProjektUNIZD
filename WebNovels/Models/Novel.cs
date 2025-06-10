@@ -22,5 +22,8 @@ namespace WebNovels.Models
         public ApplicationUser Author { get; set; }
 
         public ICollection<Chapter> Chapters { get; set; }
+
+        public ICollection<Genre> Genres { get; set; } = new List<Genre>();
+
     }
 }

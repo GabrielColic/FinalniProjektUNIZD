@@ -17,6 +17,16 @@ else
 {
     <div class="card p-3">
         <h4>@novel.Title</h4>
+        @if (novel.Genres != null && novel.Genres.Any())
+        {
+            <p>
+                <strong>Genres:</strong>
+                @foreach (var genre in novel.Genres)
+                {
+                    <span class="badge bg-secondary me-1">@genre.Name</span>
+                }
+            </p>
+        }
         <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
              alt="Cover"
              class="img-thumbnail"
@@ -45,6 +55,6 @@ else
         var user = authState.User;
         currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-        novel = await Db.Novels.Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+        novel = await Db.Novels.Include(n => n.Genres).Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
     }
 }

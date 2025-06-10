@@ -23,6 +23,7 @@ else
             <tr>
                 <th>Cover Image</th>
                 <th>Title</th>
+                <th>Genres</th>
                 <th>Author</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -37,6 +38,20 @@ else
                          class="img-thumbnail"
                          style="width: 150px; height: 150px; object-fit: cover;" />
                     <td>@novel.Title</td>
+                    <td>
+                        @if (novel.Genres != null && novel.Genres.Any())
+                        {
+                            var topGenres = novel.Genres.Take(2).ToList();
+                            foreach (var genre in topGenres)
+                            {
+                                <span class="badge bg-secondary me-1">@genre.Name</span>
+                            }
+                            if (novel.Genres.Count > 2)
+                            {
+                                <span class="badge bg-light text-muted">+@(@novel.Genres.Count - 2)</span>
+                            }
+                        }
+                    </td>
                     <td>@novel.Author?.UserName</td>
                     <td>@novel.CreatedAt.ToShortDateString()</td>
                     <td>
@@ -91,6 +106,7 @@ else
 
         novels = await Db.Novels
             .Include(n => n.Author)
+            .Include(n => n.Genres)
             .OrderByDescending(n => n.CreatedAt)
             .Skip((currentPage - 1) * pageSize)
             .Take(pageSize)

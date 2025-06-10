@@ -37,6 +37,16 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
+
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
 
 var app = builder.Build();
 

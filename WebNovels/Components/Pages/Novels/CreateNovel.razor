@@ -1,6 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using WebNovels.Data
 @using WebNovels.Models
 @using WebNovels.Services
@@ -21,6 +22,12 @@
         <div class="mb-3">
             <label>Title</label>
             <InputText class="form-control" @bind-Value="novel.Title" />
+        </div>
+
+        <div class="mb-3">
+            <label>Genres</label>
+            <GenreSelector SelectedGenreIds="@SelectedGenreIds"
+                           SelectedGenreIdsChanged="@((ids) => SelectedGenreIds = ids)" />
         </div>
 
         <div class="mb-3">
@@ -46,6 +53,7 @@
     private Novel novel = new Novel();
     private IBrowserFile? uploadedFile;
     private string? validationError;
+    private List<int> SelectedGenreIds = new();
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
@@ -89,6 +97,9 @@
         }
 
         novel.AuthorId = user.Id;
+
+        novel.Genres = await Db.Genres.Where(g => SelectedGenreIds.Contains(g.Id)).ToListAsync();
+
         Db.Novels.Add(novel);
         await Db.SaveChangesAsync();
         Navigation.NavigateTo("/novels");
