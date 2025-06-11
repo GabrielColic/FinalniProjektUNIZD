@@ -73,20 +73,9 @@ else
         </tbody>
     </table>
 
-    @if (totalPages > 0)
-    {
-        <nav>
-            <ul class="pagination">
-                @for (int i = 1; i <= totalPages; i++)
-                {
-                    var pageNumber = i;
-                    <li class="page-item @(pageNumber == currentPage ? "active" : "")">
-                        <button class="page-link" @onclick="() => GoToPage(pageNumber)">@pageNumber</button>
-                    </li>
-                }
-            </ul>
-        </nav>
-    }
+    <Pagination TotalPages="@totalPages"
+                CurrentPage="@currentPage"
+                GoToPage="GoToPage" />
 }
 
 @code {
