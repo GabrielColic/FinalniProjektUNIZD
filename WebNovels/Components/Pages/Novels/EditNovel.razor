@@ -1,8 +1,12 @@
-﻿@using WebNovels.Data
+﻿@using Microsoft.EntityFrameworkCore
+@using WebNovels.Data
 @using WebNovels.Models
 @inject ApplicationDbContext Db
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IFileUploadService FileUploadService
 @using Microsoft.AspNetCore.Authorization
+@using WebNovels.Services
 @attribute [Authorize]
 
 @page "/novels/edit/{id:int}"
@@ -26,25 +30,93 @@ else
         </div>
 
         <div class="mb-3">
+            <label>Genres</label>
+            <GenreSelector SelectedGenreIds="@SelectedGenreIds"
+                           SelectedGenreIdsChanged="@((ids) => SelectedGenreIds = ids)" />
+        </div>
+
+        <div class="mb-3">
+            <label>Current Cover Image</label><br />
+            <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
+                 alt="Cover"
+                 class="img-thumbnail"
+                 style="width: 150px; height: 150px; object-fit: cover;" />
+        </div>
+
+        <div class="mb-3">
+            <label>Change Cover Image</label>
+            <InputFile OnChange="HandleImageUpload" />
+        </div>
+
+        <div class="mb-3">
             <label>Synopsis</label>
             <InputTextArea class="form-control" @bind-Value="novel.Synopsis" />
         </div>
 
         <button class="btn btn-success" type="submit">Save Changes</button>
+        @if (!string.IsNullOrEmpty(validationError))
+        {
+            <div class="alert alert-danger">@validationError</div>
+        }
     </EditForm>
 }
 
 @code {
     [Parameter] public int id { get; set; }
     private Novel novel;
+    private IBrowserFile? uploadedFile;
+    private string? validationError;
+    private List<int> SelectedGenreIds = new();
 
     protected override async Task OnInitializedAsync()
     {
-        novel = await Db.Novels.FindAsync(id);
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        novel = await Db.Novels.Include(n => n.Genres).Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+
+        if (novel == null || novel.AuthorId != currentUserId)
+        {
+            Navigation.NavigateTo("/novels");
+            return;
+        }
+
+        SelectedGenreIds = novel.Genres.Select(g => g.Id).ToList();
+    }
+
+    private void HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+    }
+
+    private async Task SaveFileAsync()
+    {
+        if (uploadedFile != null)
+        {
+            var (success, path, error) = await FileUploadService.UploadCoverImageAsync(uploadedFile, novel.CoverImagePath);
+
+            if (!success)
+            {
+                validationError = error;
+                return;
+            }
+
+            novel.CoverImagePath = path;
+        }
     }
 
     private async Task HandleValidSubmit()
     {
+        validationError = null;
+        await SaveFileAsync();
+        if (!string.IsNullOrEmpty(validationError))
+        {
+            return;
+        }
+
+        novel.Genres = await Db.Genres.Where(g => SelectedGenreIds.Contains(g.Id)).ToListAsync();
+
         Db.Novels.Update(novel);
         await Db.SaveChangesAsync();
         Navigation.NavigateTo("/novels");

@@ -3,6 +3,7 @@
 @using WebNovels.Data
 @using WebNovels.Models
 @inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 
@@ -16,21 +17,44 @@ else
 {
     <div class="card p-3">
         <h4>@novel.Title</h4>
+        @if (novel.Genres != null && novel.Genres.Any())
+        {
+            <p>
+                <strong>Genres:</strong>
+                @foreach (var genre in novel.Genres)
+                {
+                    <span class="badge bg-secondary me-1">@genre.Name</span>
+                }
+            </p>
+        }
+        <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
+             alt="Cover"
+             class="img-thumbnail"
+             style="width: 150px; height: 150px; object-fit: cover;" />
         <p><strong>Synopsis:</strong> @novel.Synopsis</p>
         <p><strong>Author:</strong> @novel.Author?.UserName</p>
         <p><strong>Created At:</strong> @novel.CreatedAt.ToShortDateString()</p>
 
-        <a href="/novels/edit/@novel.Id" class="btn btn-primary me-2">Edit</a>
-        <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
+        @if (novel.AuthorId == currentUserId)
+        {
+            <a href="/novels/edit/@novel.Id" class="btn btn-primary me-2">Edit</a>
+            <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
+        }
+
     </div>
 }
 
 @code {
     [Parameter] public int id { get; set; }
     private Novel novel;
+    private string currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
-        novel = await Db.Novels.Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        novel = await Db.Novels.Include(n => n.Genres).Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
     }
 }

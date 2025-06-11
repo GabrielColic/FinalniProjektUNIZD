@@ -48,14 +48,14 @@ main {
 
 @media (min-width: 641px) {
     .page {
-        flex-direction: row;
+        flex-direction: column;
     }
 
     .sidebar {
-        width: 250px;
-        height: 100vh;
-        position: sticky;
-        top: 0;
+        width: 100%;
+        height: auto;
+        position: relative;
+        background-image: none;
     }
 
     .top-row {
