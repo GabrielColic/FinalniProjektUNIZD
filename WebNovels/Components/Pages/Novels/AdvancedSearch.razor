@@ -72,7 +72,15 @@ else
             @foreach (var novel in filteredNovels)
             {
                 <tr>
-                    <td>@novel.Title</td>
+                    <td>
+                        <a href="/novels/details/@novel.Id"
+                           target="_blank"
+                           rel="noopener"
+                           class="text-decoration-none fw-bold">
+                           @novel.Title
+                        </a>
+                    </td>
+
                     <td>@novel.Author?.UserName</td>
                     <td>
                         @foreach (var genre in novel.Genres)

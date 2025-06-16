@@ -1,0 +1,96 @@
+﻿@page "/chapters/edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using WebNovels.Models
+@using WebNovels.Data
+@using Blazored.TextEditor
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@if (isUnauthorized)
+{
+    <div class="alert alert-danger">You are not authorized to edit this chapter.</div>
+}
+else if (chapter != null)
+{
+    <EditForm Model="@chapter" OnValidSubmit="HandleValidSubmit" FormName="EditChapterForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Title</label>
+            <InputText class="form-control" @bind-Value="chapter.Title" />
+            <ValidationMessage For="@(() => chapter.Title)" />
+        </div>
+
+        <div class="mb-3">
+            <label>Content</label>
+            <div style="height: 400px;">
+                <BlazoredTextEditor @ref="textEditor" />
+            </div>
+
+            <ValidationMessage For="@(() => chapter.Content)" />
+        </div>
+
+        <div class="mb-3">
+            <label>Order</label>
+            <InputNumber class="form-control" @bind-Value="chapter.Order" />
+        </div>
+
+        <div class="form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="chapter.IsPublished" />
+            <label class="form-check-label">Published</label>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save Changes</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+
+    private Chapter? chapter;
+    private bool isUnauthorized = false;
+    private BlazoredTextEditor textEditor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        var currentUserId = user?.Id;
+
+        chapter = await Db.Chapters.Include(c => c.Novel).FirstOrDefaultAsync(c => c.Id == id);
+
+        if (chapter == null || chapter.Novel?.AuthorId != currentUserId)
+        {
+            isUnauthorized = true;
+            return;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && chapter != null)
+        {
+            await textEditor.LoadHTMLContent(chapter.Content ?? "");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (chapter == null) return;
+
+        chapter.Content = await textEditor.GetHTML();
+
+        Db.Chapters.Update(chapter);
+        await Db.SaveChangesAsync();
+
+        Navigation.NavigateTo($"/novels/details/{chapter.NovelId}");
+    }
+}

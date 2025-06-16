@@ -20,5 +20,7 @@ namespace WebNovels.Models
         public int NovelId { get; set; }
 
         public Novel Novel { get; set; }
+
+        public bool IsPublished { get; set; } = true;
     }
 }

@@ -1,0 +1,63 @@
+﻿@page "/chapters/delete/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using WebNovels.Data
+@using WebNovels.Models
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<h3>Delete Chapter</h3>
+
+@if (isUnauthorized)
+{
+    <div class="alert alert-danger">You are not authorized to delete this chapter.</div>
+}
+else if (chapter != null)
+{
+    <div class="alert alert-warning">
+        Are you sure you want to delete the chapter <strong>@chapter.Title</strong>?
+    </div>
+
+    <button class="btn btn-danger" @onclick="DeleteChap">Delete</button>
+    <button class="btn btn-secondary ms-2" @onclick="@(() => Navigation.NavigateTo($"/novels/details/{chapter.NovelId}"))">Cancel</button>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+
+    private Chapter? chapter;
+    private bool isUnauthorized = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        var currentUserId = user?.Id;
+
+        chapter = await Db.Chapters
+            .Include(c => c.Novel)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (chapter?.Novel?.AuthorId != currentUserId)
+        {
+            isUnauthorized = true;
+            return;
+        }
+    }
+
+    private async Task DeleteChap()
+    {
+        if (chapter != null)
+        {
+            Db.Chapters.Remove(chapter);
+            await Db.SaveChangesAsync();
+            Navigation.NavigateTo($"/novels/details/{chapter.NovelId}");
+        }
+    }
+}

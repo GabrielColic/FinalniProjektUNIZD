@@ -1,0 +1,109 @@
+﻿@page "/chapters/create/{novelId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using WebNovels.Models
+@using WebNovels.Data
+@using Blazored.TextEditor
+@inject ApplicationDbContext Db
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@if (isUnauthorized)
+{
+    <div class="alert alert-danger">You are not authorized to add chapters to this novel.</div>
+}
+else if (chapter != null)
+{
+    <EditForm Model="@chapter" OnSubmit="HandleSubmit" FormName="CreateChapterForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Title</label>
+            <InputText class="form-control" @bind-Value="chapter.Title" />
+            <ValidationMessage For="@(() => chapter.Title)" />
+        </div>
+
+        <div class="mb-3">
+            <label>Content</label>
+            <div style="height: 400px;">
+                <BlazoredTextEditor @ref="textEditor" />
+            </div>
+            <ValidationMessage For="@(() => chapter.Content)" />
+        </div>
+
+        <div class="mb-3">
+            <label>Order</label>
+            <InputNumber class="form-control" @bind-Value="chapter.Order" />
+        </div>
+
+        <div class="form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="chapter.IsPublished" />
+            <label class="form-check-label">Published</label>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save Chapter</button>
+    </EditForm>
+
+    @if (!string.IsNullOrWhiteSpace(validationError))
+    {
+        <div class="alert alert-danger">@validationError</div>
+    }
+}
+
+@code {
+    [Parameter] public int novelId { get; set; }
+
+    private Chapter? chapter;
+    private Novel? novel;
+    private string? validationError;
+    private bool isUnauthorized = false;
+    private BlazoredTextEditor? textEditor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        var currentUserId = user?.Id;
+
+        novel = await Db.Novels.FindAsync(novelId);
+
+        if (novel == null || novel.AuthorId != currentUserId)
+        {
+            isUnauthorized = true;
+            return;
+        }
+
+        chapter = new Chapter
+        {
+            NovelId = novelId,
+            Title = "",
+            Content = "",
+            Order = await Db.Chapters.Where(c => c.NovelId == novelId).CountAsync() + 1,
+            IsPublished = true
+        };
+    }
+
+    private async Task HandleSubmit(EditContext editContext)
+    {
+        if (chapter == null || textEditor == null)
+            return;
+
+        chapter.Content = await textEditor.GetHTML();
+
+        var isValid = editContext.Validate();
+        if (!isValid)
+            return;
+
+        validationError = null;
+        Db.Chapters.Add(chapter);
+        await Db.SaveChangesAsync();
+
+        Navigation.NavigateTo($"/novels/details/{novelId}");
+    }
+}

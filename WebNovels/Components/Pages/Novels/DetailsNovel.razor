@@ -42,12 +42,48 @@ else
         }
 
     </div>
+    @if (novel.AuthorId == currentUserId)
+    {
+        <a class="btn btn-success mb-3" href="/chapters/create/@novel.Id">
+            <i class="bi bi-plus-circle me-1"></i> Add Chapter
+        </a>
+    }
+
+    @if (novel.Chapters != null && novel.Chapters.Any())
+    {
+        <h5 class="mt-4">Chapters</h5>
+        <ul>
+            @foreach (var chapter in novel.Chapters.OrderBy(c => c.Order))
+            {
+                <li class="mb-2">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <a href="/chapters/read/@chapter.Id" target="_blank" class="fw-semibold me-2">
+                            @chapter.Title
+                        </a>
+
+                        @if (isAuthor && !chapter.IsPublished)
+                        {
+                            <span class="badge bg-warning text-dark">Draft</span>
+                        }
+
+                        @if (isAuthor)
+                        {
+                            <a class="btn btn-sm btn-outline-primary ms-2" href="/chapters/edit/@chapter.Id">Edit</a>
+                            <a class="btn btn-sm btn-outline-danger" href="/chapters/delete/@chapter.Id">Delete</a>
+                        }
+                    </div>
+                </li>
+            }
+
+        </ul>
+    }
 }
 
 @code {
     [Parameter] public int id { get; set; }
     private Novel novel;
     private string currentUserId;
+    private bool isAuthor = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -55,6 +91,22 @@ else
         var user = authState.User;
         currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-        novel = await Db.Novels.Include(n => n.Genres).Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+        novel = await Db.Novels
+            .Include(n => n.Genres)
+            .Include(n => n.Chapters)
+            .Include(n => n.Author)
+            .FirstOrDefaultAsync(n => n.Id == id);
+
+        if (novel == null) return;
+
+        isAuthor = novel.AuthorId == currentUserId;
+
+        if (!isAuthor && novel.Chapters != null)
+        {
+            novel.Chapters = novel.Chapters
+                .Where(c => c.IsPublished)
+                .ToList();
+        }
     }
 }
+

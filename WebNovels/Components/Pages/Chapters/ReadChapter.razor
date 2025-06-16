@@ -1,0 +1,96 @@
+﻿@page "/chapters/read/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using WebNovels.Data
+@using WebNovels.Models
+@using Markdig
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@if (isBlocked)
+{
+    <div class="alert alert-danger mt-4">
+        You are not authorized to view this chapter.
+    </div>
+}
+else if (chapter == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h2>@chapter.Title</h2>
+    <p class="text-muted">Published on @chapter.PublishedAt.ToShortDateString()</p>
+
+    <div class="mt-4">@((MarkupString)chapter.Content)</div>
+
+    @if (previousChapter != null || nextChapter != null)
+    {
+        <div class="d-flex justify-content-between mt-4">
+            @if (previousChapter != null)
+            {
+                <a class="btn btn-outline-secondary" href="/chapters/read/@previousChapter.Id">
+                    ← @previousChapter.Title
+                </a>
+            }
+
+            <div></div>
+            @if (nextChapter != null)
+            {
+                <a class="btn btn-outline-secondary" href="/chapters/read/@nextChapter.Id">
+                    @nextChapter.Title →
+                </a>
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+
+    private Chapter? chapter;
+    private Chapter? previousChapter;
+    private Chapter? nextChapter;
+    private bool isBlocked = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        var userId = user?.Id;
+
+        chapter = await Db.Chapters
+            .Include(c => c.Novel)
+            .ThenInclude(n => n.Author)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (chapter == null)
+        {
+            isBlocked = true;
+            return;
+        }
+
+        var isAuthor = chapter.Novel?.AuthorId == userId;
+
+        if (!chapter.IsPublished && !isAuthor)
+        {
+            isBlocked = true;
+            return;
+        }
+
+        var visibleChapters = await Db.Chapters
+            .Where(c => c.NovelId == chapter.NovelId && (c.IsPublished || isAuthor))
+            .OrderBy(c => c.Order)
+            .ToListAsync();
+
+        var currentIndex = visibleChapters.FindIndex(c => c.Id == chapter.Id);
+        if (currentIndex > 0) previousChapter = visibleChapters[currentIndex - 1];
+        if (currentIndex < visibleChapters.Count - 1) nextChapter = visibleChapters[currentIndex + 1];
+    }
+}

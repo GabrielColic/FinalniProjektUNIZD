@@ -44,7 +44,15 @@ else
                          alt="Cover"
                          class="img-thumbnail"
                          style="width: 150px; height: 150px; object-fit: cover;" />
-                    <td>@novel.Title</td>
+                    <td>
+                        <a href="/novels/details/@novel.Id"
+                           target="_blank"
+                           rel="noopener"
+                           class="text-decoration-none fw-bold">
+                           @novel.Title
+                        </a>
+                    </td>
+
                     <td>
                         @if (novel.Genres != null && novel.Genres.Any())
                         {
