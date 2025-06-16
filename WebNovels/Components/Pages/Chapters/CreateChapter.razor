@@ -30,11 +30,44 @@ else if (chapter != null)
         </div>
 
         <div class="mb-3">
-            <label>Content</label>
-            <div style="height: 400px;">
-                <BlazoredTextEditor @ref="textEditor" />
+            <label class="form-label">Content</label>
+
+            <div class="p-2">
+                <BlazoredTextEditor @ref="textEditor" EditorCssStyle="height: 400px;">
+                    <ToolbarContent>
+                        <select class="ql-header">
+                            <option selected></option>
+                            <option value="1"></option>
+                            <option value="2"></option>
+                            <option value="3"></option>
+                            <option value="4"></option>
+                            <option value="5"></option>
+                        </select>
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                            <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <select class="ql-color"></select>
+                            <select class="ql-background"></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-link"></button>
+                        </span>
+                    </ToolbarContent>
+                </BlazoredTextEditor>
             </div>
-            <ValidationMessage For="@(() => chapter.Content)" />
+
+            @if (!string.IsNullOrWhiteSpace(validationError))
+            {
+                <div class="text-danger mt-1">@validationError</div>
+            }
         </div>
 
         <div class="mb-3">
@@ -49,11 +82,6 @@ else if (chapter != null)
 
         <button class="btn btn-primary" type="submit">Save Chapter</button>
     </EditForm>
-
-    @if (!string.IsNullOrWhiteSpace(validationError))
-    {
-        <div class="alert alert-danger">@validationError</div>
-    }
 }
 
 @code {
@@ -91,16 +119,23 @@ else if (chapter != null)
 
     private async Task HandleSubmit(EditContext editContext)
     {
-        if (chapter == null || textEditor == null)
+        if (chapter == null)
             return;
-
-        chapter.Content = await textEditor.GetHTML();
 
         var isValid = editContext.Validate();
         if (!isValid)
             return;
 
+        chapter.Content = await textEditor.GetHTML();
+
+        if (string.IsNullOrWhiteSpace(chapter.Content) || chapter.Content == "<p><br></p>")
+        {
+            validationError = "The Content field is required.";
+            return;
+        }
+
         validationError = null;
+
         Db.Chapters.Add(chapter);
         await Db.SaveChangesAsync();
 
