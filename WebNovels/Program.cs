@@ -20,6 +20,7 @@ builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuth
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<IChapterService, ChapterService>();
 builder.Services.AddScoped<INovelService, NovelService>();
+builder.Services.AddScoped<IContentParserService, ContentParserService>();
 
 builder.Services.AddAuthentication(options =>
 {

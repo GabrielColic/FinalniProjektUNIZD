@@ -12,6 +12,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject UserManager<ApplicationUser> UserManager
+@inject IContentParserService ContentParserService
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -32,8 +33,16 @@ else if (chapter != null)
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Content</label>
+            <small class="text-muted">Max file size: 10MB. Supported formats: .md, .docx</small>
+            <InputFile OnChange="HandleFileUpload" accept=".md,.docx" />
+            @if (!string.IsNullOrEmpty(fileUploadStatus))
+            {
+                <div class="text-info mt-1">@fileUploadStatus</div>
+            }
+        </div>
 
+        <div class="mb-3">
+            <label class="form-label">Or Enter Content Manually</label>
             <div class="p-2">
                 <BlazoredTextEditor @ref="textEditor" EditorCssStyle="height: 400px;">
                     <ToolbarContent>
@@ -95,6 +104,10 @@ else if (chapter != null)
     private bool isUnauthorized = false;
     private BlazoredTextEditor? textEditor;
 
+    private IBrowserFile? uploadedFile;
+    private string? uploadedContent;
+    private string? fileUploadStatus;
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -123,6 +136,21 @@ else if (chapter != null)
         };
     }
 
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        uploadedFile = e.File;
+        try
+        {
+            uploadedContent = await ContentParserService.ParseAsync(uploadedFile);
+            fileUploadStatus = $"File '{uploadedFile.Name}' uploaded and parsed successfully.";
+        }
+        catch (Exception ex)
+        {
+            uploadedContent = null;
+            fileUploadStatus = $"Failed to parse file: {ex.Message}";
+        }
+    }
+
     private async Task HandleSubmit(EditContext editContext)
     {
         if (chapter == null) return;
@@ -130,7 +158,14 @@ else if (chapter != null)
         var isValid = editContext.Validate();
         if (!isValid) return;
 
-        chapter.Content = await textEditor.GetHTML();
+        if (!string.IsNullOrWhiteSpace(uploadedContent))
+        {
+            chapter.Content = uploadedContent;
+        }
+        else
+        {
+            chapter.Content = await textEditor.GetHTML();
+        }
 
         if (string.IsNullOrWhiteSpace(chapter.Content) || chapter.Content == "<p><br></p>")
         {
