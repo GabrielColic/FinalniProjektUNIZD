@@ -1,15 +1,13 @@
-﻿@using Microsoft.EntityFrameworkCore
-@using WebNovels.Data
+﻿@page "/novels/edit/{id:int}"
 @using WebNovels.Models
-@inject ApplicationDbContext Db
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebNovels.Services
+@inject INovelService NovelService
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IFileUploadService FileUploadService
-@using Microsoft.AspNetCore.Authorization
-@using WebNovels.Services
 @attribute [Authorize]
-
-@page "/novels/edit/{id:int}"
 @rendermode InteractiveServer
 
 <h2>Edit Novel</h2>
@@ -54,6 +52,7 @@ else
         </div>
 
         <button class="btn btn-success" type="submit">Save Changes</button>
+
         @if (!string.IsNullOrEmpty(validationError))
         {
             <div class="alert alert-danger">@validationError</div>
@@ -63,7 +62,7 @@ else
 
 @code {
     [Parameter] public int id { get; set; }
-    private Novel novel;
+    private Novel? novel;
     private IBrowserFile? uploadedFile;
     private string? validationError;
     private List<int> SelectedGenreIds = new();
@@ -74,9 +73,15 @@ else
         var user = authState.User;
         var currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-        novel = await Db.Novels.Include(n => n.Genres).Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            Navigation.NavigateTo("/novels");
+            return;
+        }
 
-        if (novel == null || novel.AuthorId != currentUserId)
+        novel = await NovelService.GetEditableNovelByIdAsync(id, currentUserId);
+
+        if (novel == null)
         {
             Navigation.NavigateTo("/novels");
             return;
@@ -90,35 +95,28 @@ else
         uploadedFile = e.File;
     }
 
-    private async Task SaveFileAsync()
-    {
-        if (uploadedFile != null)
-        {
-            var (success, path, error) = await FileUploadService.UploadCoverImageAsync(uploadedFile, novel.CoverImagePath);
-
-            if (!success)
-            {
-                validationError = error;
-                return;
-            }
-
-            novel.CoverImagePath = path;
-        }
-    }
-
     private async Task HandleValidSubmit()
     {
         validationError = null;
-        await SaveFileAsync();
-        if (!string.IsNullOrEmpty(validationError))
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(currentUserId))
         {
+            validationError = "User not authenticated.";
             return;
         }
 
-        novel.Genres = await Db.Genres.Where(g => SelectedGenreIds.Contains(g.Id)).ToListAsync();
+        var success = await NovelService.UpdateNovelAsync(novel!, uploadedFile, SelectedGenreIds, currentUserId);
 
-        Db.Novels.Update(novel);
-        await Db.SaveChangesAsync();
+        if (!success)
+        {
+            validationError = "Failed to update the novel.";
+            return;
+        }
+
         Navigation.NavigateTo("/novels");
     }
 }

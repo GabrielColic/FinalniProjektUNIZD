@@ -1,11 +1,9 @@
 ﻿@page "/novels/search"
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.EntityFrameworkCore
-@using WebNovels.Data
 @using WebNovels.Models
-@inject ApplicationDbContext Db
+@using Microsoft.AspNetCore.Authorization
+@using WebNovels.Services
+@inject INovelService NovelService
 @inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -77,7 +75,7 @@ else
                            target="_blank"
                            rel="noopener"
                            class="text-decoration-none fw-bold">
-                           @novel.Title
+                            @novel.Title
                         </a>
                     </td>
 
@@ -102,7 +100,6 @@ else
                 GoToPage="GoToPage" />
 }
 
-
 @code {
     private List<Novel> filteredNovels = new();
     private List<Genre> allGenres = new();
@@ -124,7 +121,7 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        allGenres = await Db.Genres.OrderBy(g => g.Name).ToListAsync();
+        allGenres = await NovelService.GetAllGenresAsync();
 
         titleFilter = title ?? "";
         authorFilter = author ?? "";
@@ -138,39 +135,21 @@ else
         await LoadFilteredNovels();
     }
 
-
     private async Task LoadFilteredNovels()
     {
-        IQueryable<Novel> query = Db.Novels
-            .Include(n => n.Author)
-            .Include(n => n.Genres);
+        filteredNovels = await NovelService.SearchNovelsAsync(
+            titleFilter,
+            authorFilter,
+            selectedGenreIds,
+            sortOption,
+            currentPage,
+            pageSize
+        );
 
-        if (!string.IsNullOrWhiteSpace(titleFilter))
-            query = query.Where(n => n.Title.Contains(titleFilter));
-
-        if (!string.IsNullOrWhiteSpace(authorFilter))
-            query = query.Where(n => n.Author.UserName.Contains(authorFilter));
-
-        if (selectedGenreIds.Any())
-            query = query.Where(n => n.Genres.Any(g => selectedGenreIds.Contains(g.Id)));
-
-        var totalCount = await query.CountAsync();
-        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
-
-        query = sortOption switch
-        {
-            "oldest" => query.OrderBy(n => n.CreatedAt),
-            "title_asc" => query.OrderBy(n => n.Title),
-            "title_desc" => query.OrderByDescending(n => n.Title),
-            _ => query.OrderByDescending(n => n.CreatedAt)
-        };
-
-        filteredNovels = await query.ToListAsync();
-
-        filteredNovels = await query
-       .Skip((currentPage - 1) * pageSize)
-       .Take(pageSize)
-       .ToListAsync();
+        totalPages = (int)Math.Ceiling(
+            await NovelService.GetSearchNovelsCountAsync(titleFilter, authorFilter, selectedGenreIds)
+            / (double)pageSize
+        );
     }
 
     private void ToggleGenre(int genreId)
@@ -187,7 +166,6 @@ else
         NavigateToCurrentState();
     }
 
-
     private async Task ResetFilters()
     {
         titleFilter = "";
@@ -197,7 +175,6 @@ else
         currentPage = 1;
         NavigateToCurrentState();
     }
-
 
     private async Task GoToPage(int pageNumber)
     {
@@ -224,6 +201,4 @@ else
 
         Navigation.NavigateTo($"/novels/search?{query}");
     }
-
-
 }

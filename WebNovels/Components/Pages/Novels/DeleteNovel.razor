@@ -1,13 +1,10 @@
 ﻿@page "/novels/delete/{id:int}"
-@using Microsoft.EntityFrameworkCore
-@using WebNovels.Data
 @using WebNovels.Models
-@inject ApplicationDbContext Db
-@inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
-@inject IFileUploadService FileUploadService
 @using Microsoft.AspNetCore.Authorization
 @using WebNovels.Services
+@inject INovelService NovelService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -28,35 +25,39 @@ else
 
 @code {
     [Parameter] public int id { get; set; }
-    private Novel novel;
+
+    private Novel? novel;
+    private string? currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        var currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-        novel = await Db.Novels.Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
-
-        if (novel == null || novel.AuthorId != currentUserId)
+        if (string.IsNullOrEmpty(currentUserId))
         {
             Navigation.NavigateTo("/novels");
             return;
+        }
+
+        novel = await NovelService.GetEditableNovelByIdAsync(id, currentUserId);
+
+        if (novel == null)
+        {
+            Navigation.NavigateTo("/novels");
         }
     }
 
     private async Task Delete()
     {
-        if (novel != null)
+        if (!string.IsNullOrEmpty(currentUserId))
         {
-            if (!string.IsNullOrEmpty(novel.CoverImagePath))
+            var success = await NovelService.DeleteNovelAsync(id, currentUserId);
+            if (success)
             {
-                FileUploadService.DeleteFile(novel.CoverImagePath);
+                Navigation.NavigateTo("/novels");
             }
-
-            Db.Novels.Remove(novel);
-            await Db.SaveChangesAsync();
-            Navigation.NavigateTo("/novels");
         }
     }
 }

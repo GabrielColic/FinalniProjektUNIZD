@@ -19,6 +19,7 @@ builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<IChapterService, ChapterService>();
+builder.Services.AddScoped<INovelService, NovelService>();
 
 builder.Services.AddAuthentication(options =>
 {

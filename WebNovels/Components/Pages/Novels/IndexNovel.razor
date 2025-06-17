@@ -1,9 +1,8 @@
 ﻿@page "/novels"
 
-@using Microsoft.EntityFrameworkCore
-@using WebNovels.Data
 @using WebNovels.Models
-@inject ApplicationDbContext Db
+@using WebNovels.Services
+@inject INovelService NovelService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Authorization
@@ -49,7 +48,7 @@ else
                            target="_blank"
                            rel="noopener"
                            class="text-decoration-none fw-bold">
-                           @novel.Title
+                            @novel.Title
                         </a>
                     </td>
 
@@ -106,28 +105,9 @@ else
         searchQuery = search ?? "";
         currentPage = page ?? 1;
 
-        await LoadNovels();
-    }
-
-    private async Task LoadNovels()
-    {
-        IQueryable<Novel> query = Db.Novels
-            .Include(n => n.Author)
-            .Include(n => n.Genres);
-
-        if (!string.IsNullOrWhiteSpace(searchQuery))
-        {
-            query = query.Where(n => n.Title.Contains(searchQuery));
-        }
-
-        var totalCount = await query.CountAsync();
+        novels = await NovelService.GetAllNovelsAsync(searchQuery, currentPage, pageSize);
+        var totalCount = await NovelService.GetTotalNovelsCountAsync(searchQuery);
         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
-
-        novels = await query
-            .OrderByDescending(n => n.CreatedAt)
-            .Skip((currentPage - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
     }
 
     private void GoToPage(int pageNumber)
