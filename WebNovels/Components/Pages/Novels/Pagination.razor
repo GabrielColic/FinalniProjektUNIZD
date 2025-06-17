@@ -1,0 +1,23 @@
+﻿@if (TotalPages > 0)
+{
+    <nav>
+            <ul class="pagination">
+                @for (int i = 1; i <= TotalPages; i++)
+                {
+                    var pageNumber = i;
+                    <li class="page-item @(pageNumber == CurrentPage ? "active" : "")">
+                    <button class="page-link" @onclick="() => GoToPage.InvokeAsync(pageNumber)">
+                        @pageNumber
+                    </button>
+                    </li>
+                }
+            </ul>
+        </nav>
+}
+
+@code {
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public int CurrentPage { get; set; }
+    [Parameter] public EventCallback<int> GoToPage { get; set; }
+}
+

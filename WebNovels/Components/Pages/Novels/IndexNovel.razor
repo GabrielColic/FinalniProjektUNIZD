@@ -1,9 +1,10 @@
 ﻿@page "/novels"
-@using Microsoft.EntityFrameworkCore
-@using WebNovels.Data
+
 @using WebNovels.Models
-@inject ApplicationDbContext Db
+@using WebNovels.Services
+@inject INovelService NovelService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -11,6 +12,11 @@
 <h2>All Novels</h2>
 
 <a class="btn btn-primary mb-3" href="/novels/create">Create New Novel</a>
+
+@if (!string.IsNullOrWhiteSpace(searchQuery))
+{
+    <p>Showing results for: <strong>@searchQuery</strong></p>
+}
 
 @if (novels == null)
 {
@@ -37,7 +43,15 @@ else
                          alt="Cover"
                          class="img-thumbnail"
                          style="width: 150px; height: 150px; object-fit: cover;" />
-                    <td>@novel.Title</td>
+                    <td>
+                        <a href="/novels/details/@novel.Id"
+                           target="_blank"
+                           rel="noopener"
+                           class="text-decoration-none fw-bold">
+                            @novel.Title
+                        </a>
+                    </td>
+
                     <td>
                         @if (novel.Genres != null && novel.Genres.Any())
                         {
@@ -60,63 +74,54 @@ else
                         {
                             <text> | <a href="/novels/edit/@novel.Id">Edit</a> | <a href="/novels/delete/@novel.Id">Delete</a></text>
                         }
-
                     </td>
                 </tr>
             }
         </tbody>
     </table>
 
-    @if (totalPages > 0)
-    {
-        <nav>
-            <ul class="pagination">
-                @for (int i = 1; i <= totalPages; i++)
-                {
-                    var pageNumber = i;
-                    <li class="page-item @(pageNumber == currentPage ? "active" : "")">
-                        <button class="page-link" @onclick="() => GoToPage(pageNumber)">@pageNumber</button>
-                    </li>
-                }
-            </ul>
-        </nav>
-    }
+    <Pagination TotalPages="@totalPages"
+                CurrentPage="@currentPage"
+                GoToPage="GoToPage" />
 }
 
 @code {
-    private List<Novel> novels;
+    [Parameter, SupplyParameterFromQuery] public string? search { get; set; }
+    [Parameter, SupplyParameterFromQuery] public int? page { get; set; }
 
-    private string currentUserId;
+    private List<Novel> novels = new();
+    private string searchQuery = "";
+    private string currentUserId = "";
     private int currentPage = 1;
     private int pageSize = 10;
     private int totalPages;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
-        currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        await LoadNovels();
-    }
+        currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
 
-    private async Task LoadNovels()
-    {
-        var totalCount = await Db.Novels.CountAsync();
+        searchQuery = search ?? "";
+        currentPage = page ?? 1;
+
+        novels = await NovelService.GetAllNovelsAsync(searchQuery, currentPage, pageSize);
+        var totalCount = await NovelService.GetTotalNovelsCountAsync(searchQuery);
         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
-
-        novels = await Db.Novels
-            .Include(n => n.Author)
-            .Include(n => n.Genres)
-            .OrderByDescending(n => n.CreatedAt)
-            .Skip((currentPage - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        Console.WriteLine($"Loading page {currentPage} with page size {pageSize}");
     }
-    private async Task GoToPage(int pageNumber)
+
+    private void GoToPage(int pageNumber)
     {
         currentPage = pageNumber;
-        await LoadNovels();
+
+        var queryParams = new Dictionary<string, string>();
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+            queryParams["search"] = searchQuery;
+
+        queryParams["page"] = currentPage.ToString();
+
+        var query = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+        Navigation.NavigateTo($"/novels?{query}");
     }
 }

@@ -1,0 +1,150 @@
+﻿@page "/chapters/edit/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using WebNovels.Models
+@using WebNovels.Services
+@using Blazored.TextEditor
+@inject IChapterService ChapterService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@if (isUnauthorized)
+{
+    <div class="alert alert-danger">You are not authorized to edit this chapter.</div>
+}
+else if (chapter != null)
+{
+    <EditForm Model="@chapter" OnValidSubmit="HandleValidSubmit" FormName="EditChapterForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label>Title</label>
+            <InputText class="form-control" @bind-Value="chapter.Title" />
+            <ValidationMessage For="@(() => chapter.Title)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Content</label>
+
+            <div class="p-2">
+                <BlazoredTextEditor @ref="textEditor" EditorCssStyle="height: 400px;">
+                    <ToolbarContent>
+                        <select class="ql-header">
+                            <option selected></option>
+                            <option value="1"></option>
+                            <option value="2"></option>
+                            <option value="3"></option>
+                            <option value="4"></option>
+                            <option value="5"></option>
+                        </select>
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                            <button class="ql-strike"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <select class="ql-color"></select>
+                            <select class="ql-background"></select>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-link"></button>
+                        </span>
+                    </ToolbarContent>
+                </BlazoredTextEditor>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(validationError))
+            {
+                <div class="text-danger mt-1">@validationError</div>
+            }
+        </div>
+
+        <div class="mb-3">
+            <label>Order</label>
+            <InputNumber class="form-control" @bind-Value="chapter.Order" />
+        </div>
+
+        <div class="form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="chapter.IsPublished" />
+            <label class="form-check-label">Published</label>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Save Changes</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+
+    private Chapter? chapter;
+    private bool isUnauthorized = false;
+    private BlazoredTextEditor? textEditor;
+    private string? validationError;
+    private bool shouldLoadContent = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        var userId = user?.Id;
+
+        chapter = await ChapterService.GetEditableChapterAsync(id, userId ?? "");
+
+        if (chapter == null)
+        {
+            isUnauthorized = true;
+        }
+        else
+        {
+            shouldLoadContent = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (shouldLoadContent && textEditor != null)
+        {
+            shouldLoadContent = false;
+
+            try
+            {
+                await Task.Delay(150); // Let JS editor load
+                await textEditor.LoadHTMLContent(chapter?.Content ?? "");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error loading content: " + ex.Message);
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (chapter == null) return;
+
+        chapter.Content = await textEditor.GetHTML();
+
+        if (string.IsNullOrWhiteSpace(chapter.Content) || chapter.Content == "<p><br></p>")
+        {
+            validationError = "The Content field is required.";
+            return;
+        }
+
+        validationError = null;
+
+        await ChapterService.SaveChapterAsync(chapter);
+        Navigation.NavigateTo($"/novels/details/{chapter.NovelId}");
+    }
+}

@@ -1,0 +1,204 @@
+﻿@page "/novels/search"
+@using WebNovels.Models
+@using Microsoft.AspNetCore.Authorization
+@using WebNovels.Services
+@inject INovelService NovelService
+@inject NavigationManager Navigation
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<h2>Advanced Search</h2>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <label>Title</label>
+        <InputText class="form-control" @bind-Value="titleFilter" placeholder="Search by title..." />
+    </div>
+    <div class="col-md-4">
+        <label>Author</label>
+        <InputText class="form-control" @bind-Value="authorFilter" placeholder="Search by author..." />
+    </div>
+    <div class="col-md-4">
+        <label>Genres</label>
+        @foreach (var genre in allGenres)
+        {
+            <div>
+                <input type="checkbox" id="genre_@genre.Id" @onchange="() => ToggleGenre(genre.Id)" checked="@selectedGenreIds.Contains(genre.Id)" />
+                <label for="genre_@genre.Id">@genre.Name</label>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label>Sort By</label>
+        <select class="form-select" @bind="sortOption">
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="title_asc">Title A-Z</option>
+            <option value="title_desc">Title Z-A</option>
+        </select>
+    </div>
+    <div class="col-md-3 align-self-end">
+        <button class="btn btn-primary" @onclick="ApplyFilters">Apply Filters</button>
+        <button class="btn btn-secondary ms-2" @onclick="ResetFilters">Reset</button>
+    </div>
+</div>
+
+@if (filteredNovels == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!filteredNovels.Any())
+{
+    <p>No novels match your search.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Genres</th>
+                <th>Created</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var novel in filteredNovels)
+            {
+                <tr>
+                    <td>
+                        <a href="/novels/details/@novel.Id"
+                           target="_blank"
+                           rel="noopener"
+                           class="text-decoration-none fw-bold">
+                            @novel.Title
+                        </a>
+                    </td>
+
+                    <td>@novel.Author?.UserName</td>
+                    <td>
+                        @foreach (var genre in novel.Genres)
+                        {
+                            <span class="badge bg-secondary me-1">@genre.Name</span>
+                        }
+                    </td>
+                    <td>@novel.CreatedAt.ToShortDateString()</td>
+                    <td>
+                        <a class="btn btn-sm btn-outline-primary" href="/novels/details/@novel.Id">View</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <Pagination TotalPages="@totalPages"
+                CurrentPage="@currentPage"
+                GoToPage="GoToPage" />
+}
+
+@code {
+    private List<Novel> filteredNovels = new();
+    private List<Genre> allGenres = new();
+    private List<int> selectedGenreIds = new();
+
+    private string titleFilter = "";
+    private string authorFilter = "";
+    private string sortOption = "newest";
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages;
+
+    [Parameter, SupplyParameterFromQuery] public string? title { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? author { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? sort { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? genres { get; set; }
+    [Parameter, SupplyParameterFromQuery] public int? page { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        allGenres = await NovelService.GetAllGenresAsync();
+
+        titleFilter = title ?? "";
+        authorFilter = author ?? "";
+        sortOption = sort ?? "newest";
+        currentPage = page ?? 1;
+
+        selectedGenreIds = !string.IsNullOrWhiteSpace(genres)
+            ? genres.Split(',').Select(int.Parse).ToList()
+            : new List<int>();
+
+        await LoadFilteredNovels();
+    }
+
+    private async Task LoadFilteredNovels()
+    {
+        filteredNovels = await NovelService.SearchNovelsAsync(
+            titleFilter,
+            authorFilter,
+            selectedGenreIds,
+            sortOption,
+            currentPage,
+            pageSize
+        );
+
+        totalPages = (int)Math.Ceiling(
+            await NovelService.GetSearchNovelsCountAsync(titleFilter, authorFilter, selectedGenreIds)
+            / (double)pageSize
+        );
+    }
+
+    private void ToggleGenre(int genreId)
+    {
+        if (selectedGenreIds.Contains(genreId))
+            selectedGenreIds.Remove(genreId);
+        else
+            selectedGenreIds.Add(genreId);
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        NavigateToCurrentState();
+    }
+
+    private async Task ResetFilters()
+    {
+        titleFilter = "";
+        authorFilter = "";
+        sortOption = "newest";
+        selectedGenreIds.Clear();
+        currentPage = 1;
+        NavigateToCurrentState();
+    }
+
+    private async Task GoToPage(int pageNumber)
+    {
+        currentPage = pageNumber;
+        NavigateToCurrentState();
+    }
+
+    private void NavigateToCurrentState()
+    {
+        var queryParams = new Dictionary<string, string>
+        {
+            ["title"] = titleFilter,
+            ["author"] = authorFilter,
+            ["sort"] = sortOption,
+            ["page"] = currentPage.ToString()
+        };
+
+        if (selectedGenreIds.Any())
+            queryParams["genres"] = string.Join(",", selectedGenreIds);
+
+        var query = string.Join("&", queryParams
+            .Where(kvp => !string.IsNullOrWhiteSpace(kvp.Value))
+            .Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
+
+        Navigation.NavigateTo($"/novels/search?{query}");
+    }
+}

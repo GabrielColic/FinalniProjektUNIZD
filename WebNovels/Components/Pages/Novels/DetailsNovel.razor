@@ -1,11 +1,12 @@
 ﻿@page "/novels/details/{id:int}"
-@using Microsoft.EntityFrameworkCore
-@using WebNovels.Data
 @using WebNovels.Models
-@inject ApplicationDbContext Db
-@inject AuthenticationStateProvider AuthStateProvider
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using WebNovels.Services
+@inject INovelService NovelService
+@inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize]
+@rendermode InteractiveServer
 
 <h2>Novel Details</h2>
 
@@ -17,7 +18,8 @@ else
 {
     <div class="card p-3">
         <h4>@novel.Title</h4>
-        @if (novel.Genres != null && novel.Genres.Any())
+
+        @if (novel.Genres?.Any() == true)
         {
             <p>
                 <strong>Genres:</strong>
@@ -27,27 +29,65 @@ else
                 }
             </p>
         }
+
         <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
              alt="Cover"
              class="img-thumbnail"
              style="width: 150px; height: 150px; object-fit: cover;" />
+
         <p><strong>Synopsis:</strong> @novel.Synopsis</p>
         <p><strong>Author:</strong> @novel.Author?.UserName</p>
         <p><strong>Created At:</strong> @novel.CreatedAt.ToShortDateString()</p>
 
-        @if (novel.AuthorId == currentUserId)
+        @if (isAuthor)
         {
             <a href="/novels/edit/@novel.Id" class="btn btn-primary me-2">Edit</a>
             <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
         }
-
     </div>
+
+    @if (isAuthor)
+    {
+        <a class="btn btn-success mb-3" href="/chapters/create/@novel.Id">
+            <i class="bi bi-plus-circle me-1"></i> Add Chapter
+        </a>
+    }
+
+    @if (novel.Chapters?.Any() == true)
+    {
+        <h5 class="mt-4">Chapters</h5>
+        <ul>
+            @foreach (var chapter in novel.Chapters.OrderBy(c => c.Order))
+            {
+                <li class="mb-2">
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <a href="/chapters/read/@chapter.Id" target="_blank" class="fw-semibold me-2">
+                            @chapter.Title
+                        </a>
+
+                        @if (isAuthor && !chapter.IsPublished)
+                        {
+                            <span class="badge bg-warning text-dark">Draft</span>
+                        }
+
+                        @if (isAuthor)
+                        {
+                            <a class="btn btn-sm btn-outline-primary ms-2" href="/chapters/edit/@chapter.Id">Edit</a>
+                            <a class="btn btn-sm btn-outline-danger" href="/chapters/delete/@chapter.Id">Delete</a>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
 }
 
 @code {
     [Parameter] public int id { get; set; }
-    private Novel novel;
-    private string currentUserId;
+
+    private Novel? novel;
+    private string? currentUserId;
+    private bool isAuthor = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -55,6 +95,14 @@ else
         var user = authState.User;
         currentUserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-        novel = await Db.Novels.Include(n => n.Genres).Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+        if (string.IsNullOrEmpty(currentUserId))
+            return;
+
+        novel = await NovelService.GetNovelByIdAsync(id, currentUserId);
+
+        if (novel == null)
+            return;
+
+        isAuthor = novel.AuthorId == currentUserId;
     }
 }

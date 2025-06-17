@@ -10,7 +10,6 @@ namespace WebNovels.Models
         [Required]
         public string Title { get; set; }
 
-        [Required]
         public string Content { get; set; }
 
         public int Order { get; set; }
@@ -20,5 +19,7 @@ namespace WebNovels.Models
         public int NovelId { get; set; }
 
         public Novel Novel { get; set; }
+
+        public bool IsPublished { get; set; } = true;
     }
 }

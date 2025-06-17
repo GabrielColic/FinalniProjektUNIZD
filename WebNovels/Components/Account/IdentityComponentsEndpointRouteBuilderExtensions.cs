@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using WebNovels.Components.Account.Pages;
-using WebNovels.Components.Account.Pages.Manage;
+using WebNovels.Components.Account.AccountPages;
+using WebNovels.Components.Account.AccountPages.Manage;
 using WebNovels.Models;
 
 namespace Microsoft.AspNetCore.Routing
