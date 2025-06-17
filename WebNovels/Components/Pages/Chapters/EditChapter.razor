@@ -2,14 +2,13 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.EntityFrameworkCore
 @using WebNovels.Models
-@using WebNovels.Data
+@using WebNovels.Services
 @using Blazored.TextEditor
-@inject ApplicationDbContext Db
-@inject NavigationManager Navigation
+@inject IChapterService ChapterService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Navigation
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -29,7 +28,7 @@ else if (chapter != null)
             <ValidationMessage For="@(() => chapter.Title)" />
         </div>
 
-         <div class="mb-3">
+        <div class="mb-3">
             <label class="form-label">Content</label>
 
             <div class="p-2">
@@ -97,11 +96,11 @@ else if (chapter != null)
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = await UserManager.GetUserAsync(authState.User);
-        var currentUserId = user?.Id;
+        var userId = user?.Id;
 
-        chapter = await Db.Chapters.Include(c => c.Novel).FirstOrDefaultAsync(c => c.Id == id);
+        chapter = await ChapterService.GetEditableChapterAsync(id, userId ?? "");
 
-        if (chapter == null || chapter.Novel?.AuthorId != currentUserId)
+        if (chapter == null)
         {
             isUnauthorized = true;
         }
@@ -119,7 +118,7 @@ else if (chapter != null)
 
             try
             {
-                await Task.Delay(150);
+                await Task.Delay(150); // Let JS editor load
                 await textEditor.LoadHTMLContent(chapter?.Content ?? "");
             }
             catch (Exception ex)
@@ -145,9 +144,7 @@ else if (chapter != null)
 
         validationError = null;
 
-        Db.Chapters.Update(chapter);
-        await Db.SaveChangesAsync();
-
+        await ChapterService.SaveChapterAsync(chapter);
         Navigation.NavigateTo($"/novels/details/{chapter.NovelId}");
     }
 }

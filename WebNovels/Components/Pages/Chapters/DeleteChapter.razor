@@ -2,13 +2,12 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.EntityFrameworkCore
-@using WebNovels.Data
 @using WebNovels.Models
-@inject ApplicationDbContext Db
-@inject NavigationManager Navigation
+@using WebNovels.Services
+@inject IChapterService ChapterService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Navigation
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -38,16 +37,13 @@ else if (chapter != null)
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = await UserManager.GetUserAsync(authState.User);
-        var currentUserId = user?.Id;
+        var userId = user?.Id;
 
-        chapter = await Db.Chapters
-            .Include(c => c.Novel)
-            .FirstOrDefaultAsync(c => c.Id == id);
+        chapter = await ChapterService.GetEditableChapterAsync(id, userId ?? "");
 
-        if (chapter?.Novel?.AuthorId != currentUserId)
+        if (chapter == null)
         {
             isUnauthorized = true;
-            return;
         }
     }
 
@@ -55,8 +51,7 @@ else if (chapter != null)
     {
         if (chapter != null)
         {
-            Db.Chapters.Remove(chapter);
-            await Db.SaveChangesAsync();
+            await ChapterService.DeleteChapterAsync(chapter.Id, chapter.Novel.AuthorId);
             Navigation.NavigateTo($"/novels/details/{chapter.NovelId}");
         }
     }
