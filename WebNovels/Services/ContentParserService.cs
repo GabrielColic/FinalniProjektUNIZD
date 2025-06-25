@@ -1,4 +1,5 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
+using HtmlAgilityPack;
 using Microsoft.AspNetCore.Components.Forms;
 using OpenXmlPowerTools;
 using System.Xml.Linq;
@@ -46,7 +47,64 @@ namespace WebNovels.Services
             };
 
             XElement htmlElement = HtmlConverter.ConvertToHtml(doc, settings);
-            return htmlElement.ToString(SaveOptions.DisableFormatting);
+            string rawHtml = htmlElement.ToString(SaveOptions.DisableFormatting);
+
+            return CleanHtml(rawHtml);
         }
+
+
+        private string CleanHtml(string html)
+        {
+            var doc = new HtmlAgilityPack.HtmlDocument();
+            doc.LoadHtml(html);
+
+            // 1. Remove <style> blocks
+            var styleNodes = doc.DocumentNode.SelectNodes("//style");
+            if (styleNodes != null)
+            {
+                foreach (var styleNode in styleNodes)
+                    styleNode.Remove();
+            }
+
+            // 2. Remove font-size and font-family from inline styles
+            foreach (var node in doc.DocumentNode.SelectNodes("//*[@style]") ?? Enumerable.Empty<HtmlNode>())
+            {
+                string style = node.GetAttributeValue("style", "");
+
+                style = System.Text.RegularExpressions.Regex.Replace(
+                    style,
+                    @"font-(size|family)\s*:\s*[^;""']+;?",
+                    "",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                );
+
+                style = style.Trim().TrimEnd(';');
+
+                if (string.IsNullOrWhiteSpace(style))
+                    node.Attributes["style"].Remove();
+                else
+                    node.SetAttributeValue("style", style);
+            }
+
+            // 3. Convert known bold span classes to <strong>
+            foreach (var span in doc.DocumentNode.SelectNodes("//span[contains(@class, 'docx-')]") ?? Enumerable.Empty<HtmlNode>())
+            {
+                var classAttr = span.GetAttributeValue("class", "");
+                var isBold = classAttr.Contains("000000") || classAttr.Contains("000007");
+
+                HtmlNode newNode = HtmlNode.CreateNode(isBold ? "<strong></strong>" : "<span></span>");
+                newNode.InnerHtml = span.InnerHtml;
+                span.ParentNode.ReplaceChild(newNode, span);
+            }
+
+            // 4. Remove all remaining class attributes
+            foreach (var node in doc.DocumentNode.SelectNodes("//*[@class]") ?? Enumerable.Empty<HtmlNode>())
+            {
+                node.Attributes["class"].Remove();
+            }
+
+            return doc.DocumentNode.OuterHtml;
+        }
+
     }
 }

@@ -33,7 +33,7 @@ else if (chapter != null)
         </div>
 
         <div class="mb-3">
-            <small class="text-muted">Max file size: 10MB. Supported formats: .md, .docx</small>
+            <small class="text-muted">Max file size: 10MB. Supported formats: .md (recommended), .docx</small>
             <InputFile OnChange="HandleFileUpload" accept=".md,.docx" />
             @if (!string.IsNullOrEmpty(fileUploadStatus))
             {

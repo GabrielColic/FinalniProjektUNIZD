@@ -11,6 +11,13 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 
+<style>
+    .chapter-content p {
+        margin: 0 0 0.5rem 0; 
+        line-height: 1.6;
+    }
+</style>
+
 @if (isBlocked)
 {
     <div class="alert alert-danger mt-4">
@@ -23,17 +30,56 @@ else if (chapter == null)
 }
 else
 {
-    <h2>@chapter.Title</h2>
+    <!-- Title and reader controls -->
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 class="mb-0">@chapter.Title</h2>
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center">
+                <label class="me-2 mb-0">Font Size:</label>
+                <select @bind="fontSize" class="form-select form-select-sm" style="width: auto;">
+                    <option value="1rem">Small</option>
+                    <option value="1.1rem">Default</option>
+                    <option value="1.3rem">Large</option>
+                    <option value="1.5rem">Extra Large</option>
+                </select>
+            </div>
+            <div class="d-flex align-items-center">
+                <label class="me-2 mb-0">Font Type:</label>
+                <select @bind="fontFamily" class="form-select form-select-sm" style="width: auto;">
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="Times New Roman, serif">Times New Roman</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="Verdana, sans-serif">Verdana</option>
+                    <option value="Courier New, monospace">Courier New</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
     <p class="text-muted">Published on @chapter.PublishedAt.ToShortDateString()</p>
 
-    <div class="mt-4">@((MarkupString)chapter.Content)</div>
+    <!-- Chapter Content -->
+    <div class="mt-4 d-flex justify-content-center">
+        <div class="chapter-content"
+             style="
+                            max-width: 1000px;
+                            width: 100%;
+                            padding: 0 1rem;
+                            font-size:@fontSize;
+                            font-family:@fontFamily;
+                            text-align: justify;
+                            color: #2e2e2e;">
+            @((MarkupString)chapter.Content)
+        </div>
+    </div>
 
+    <!-- Navigation Buttons -->
     @if (previousChapter != null || nextChapter != null)
     {
         <div class="d-flex justify-content-between mt-4">
             @if (previousChapter != null)
             {
-                <a class="btn btn-outline-secondary" href="/chapters/read/@previousChapter.Id">
+                <a class="btn btn-outline-secondary mb-5" href="/chapters/read/@previousChapter.Id">
                     ← @previousChapter.Title
                 </a>
             }
@@ -42,7 +88,7 @@ else
 
             @if (nextChapter != null)
             {
-                <a class="btn btn-outline-secondary" href="/chapters/read/@nextChapter.Id">
+                <a class="btn btn-outline-secondary mb-5" href="/chapters/read/@nextChapter.Id">
                     @nextChapter.Title →
                 </a>
             }
@@ -57,6 +103,9 @@ else
     private Chapter? previousChapter;
     private Chapter? nextChapter;
     private bool isBlocked = false;
+
+    private string fontSize = "1.1rem";
+    private string fontFamily = "Georgia, serif";
 
     protected override async Task OnInitializedAsync()
     {
