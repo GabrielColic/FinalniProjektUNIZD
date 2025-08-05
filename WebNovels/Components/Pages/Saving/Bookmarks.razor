@@ -1,0 +1,53 @@
+﻿@page "/bookmarks"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using WebNovels.Models
+@using WebNovels.Services.BookmarkServices
+@inject IBookmarkService BookmarkService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthStateProvider
+
+<h3>Your Bookmarks</h3>
+
+@if (bookmarks == null)
+{
+    <p><em>Loading bookmarks...</em></p>
+}
+else if (!bookmarks.Any())
+{
+    <p class="text-muted">You haven’t bookmarked anything yet.</p>
+}
+else
+{
+    <div class="list-group mt-3">
+        @foreach (var bm in bookmarks)
+        {
+            <a href="/chapters/read/@bm.ChapterId" class="list-group-item list-group-item-action">
+                <div class="d-flex justify-content-between">
+                    <strong>@bm.Novel.Title</strong>
+                    <small class="text-muted">@bm.CreatedAt.ToLocalTime().ToString("g")</small>
+                </div>
+                <div class="text-muted">Chapter: @bm.Chapter.Title</div>
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private List<Bookmark> bookmarks = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+
+        if (user != null)
+        {
+            bookmarks = await BookmarkService.GetAllBookmarksAsync(user.Id);
+        }
+    }
+}

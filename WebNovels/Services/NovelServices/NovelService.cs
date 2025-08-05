@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using WebNovels.Data;
 using WebNovels.Models;
 
-namespace WebNovels.Services
+namespace WebNovels.Services.NovelServices
 {
     public class NovelService : INovelService
     {

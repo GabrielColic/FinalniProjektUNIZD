@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 
-namespace WebNovels.Services
+namespace WebNovels.Services.ChapterServices
 {
     public interface IContentParserService
     {

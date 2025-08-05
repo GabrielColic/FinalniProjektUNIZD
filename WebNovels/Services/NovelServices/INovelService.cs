@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using WebNovels.Models;
 
-namespace WebNovels.Services
+namespace WebNovels.Services.NovelServices
 {
     public interface INovelService
     {

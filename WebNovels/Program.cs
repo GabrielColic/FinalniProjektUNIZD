@@ -5,7 +5,9 @@ using WebNovels.Components;
 using WebNovels.Components.Account;
 using WebNovels.Data;
 using WebNovels.Models;
-using WebNovels.Services;
+using WebNovels.Services.BookmarkServices;
+using WebNovels.Services.ChapterServices;
+using WebNovels.Services.NovelServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +23,9 @@ builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<IChapterService, ChapterService>();
 builder.Services.AddScoped<INovelService, NovelService>();
 builder.Services.AddScoped<IContentParserService, ContentParserService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
+builder.Services.AddScoped<IBookmarkService, BookmarkService>();
+
 
 builder.Services.AddAuthentication(options =>
 {

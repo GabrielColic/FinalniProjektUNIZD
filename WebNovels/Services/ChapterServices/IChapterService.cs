@@ -1,5 +1,5 @@
 ﻿using WebNovels.Models;
-namespace WebNovels.Services
+namespace WebNovels.Services.ChapterServices
 {
     public interface IChapterService
     {

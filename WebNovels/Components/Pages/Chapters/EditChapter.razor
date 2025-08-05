@@ -1,10 +1,11 @@
 ﻿@page "/chapters/edit/{id:int}"
+@using Blazored.TextEditor
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
 @using WebNovels.Models
 @using WebNovels.Services
-@using Blazored.TextEditor
+@using WebNovels.Services.ChapterServices
 @inject IChapterService ChapterService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject UserManager<ApplicationUser> UserManager

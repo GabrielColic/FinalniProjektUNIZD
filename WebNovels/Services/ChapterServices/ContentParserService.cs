@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using OpenXmlPowerTools;
 using System.Xml.Linq;
 
-namespace WebNovels.Services
+namespace WebNovels.Services.ChapterServices
 {
     public class ContentParserService : IContentParserService
     {
@@ -55,7 +55,7 @@ namespace WebNovels.Services
 
         private string CleanHtml(string html)
         {
-            var doc = new HtmlAgilityPack.HtmlDocument();
+            var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
             // 1. Remove <style> blocks

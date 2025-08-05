@@ -1,12 +1,14 @@
 ﻿@page "/chapters/create/{novelId:int}"
+@using Blazored.TextEditor
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
-@using WebNovels.Models
 @using WebNovels.Data
+@using WebNovels.Models
 @using WebNovels.Services
-@using Blazored.TextEditor
+@using WebNovels.Services.ChapterServices
+@using WebNovels.Services.ChapterServices
 @inject ApplicationDbContext Db
 @inject IChapterService ChapterService
 @inject NavigationManager Navigation

@@ -1,8 +1,9 @@
 ﻿@page "/novels/details/{id:int}"
-@using WebNovels.Models
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using WebNovels.Models
 @using WebNovels.Services
+@using WebNovels.Services.NovelServices
 @inject INovelService NovelService
 @inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize]
