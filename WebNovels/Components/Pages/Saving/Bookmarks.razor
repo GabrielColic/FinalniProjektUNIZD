@@ -4,50 +4,157 @@
 
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
 @using Microsoft.AspNetCore.Identity
 @using WebNovels.Models
 @using WebNovels.Services.BookmarkServices
+@using WebNovels.Components.Pages.Novels
+@using WebNovels.Components.Pages.Shared
 @inject IBookmarkService BookmarkService
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
 
-<h3>Your Bookmarks</h3>
+<h3 class="mb-4">Your Bookmarked Novels</h3>
 
-@if (bookmarks == null)
+@if (pagedBookmarks == null)
 {
     <p><em>Loading bookmarks...</em></p>
 }
-else if (!bookmarks.Any())
+else if (!pagedBookmarks.Any())
 {
     <p class="text-muted">You haven’t bookmarked anything yet.</p>
 }
 else
 {
-    <div class="list-group mt-3">
-        @foreach (var bm in bookmarks)
+    <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+        @foreach (var bm in pagedBookmarks)
         {
-            <a href="/chapters/read/@bm.ChapterId" class="list-group-item list-group-item-action">
-                <div class="d-flex justify-content-between">
-                    <strong>@bm.Novel.Title</strong>
-                    <small class="text-muted">@bm.CreatedAt.ToLocalTime().ToString("g")</small>
+            var total = bm.Novel.Chapters?.Count ?? 0;
+            var current = bm.Chapter?.Order ?? 0;
+            var percentage = total > 0 ? (int)((double)current / total * 100) : 0;
+
+            <div class="col">
+                <div class="card" style="height: 200px; overflow: hidden;">
+                    <div class="row g-0 h-100">
+                        <div class="col-4" style="height: 100%;">
+                            <img src="@(!string.IsNullOrEmpty(bm.Novel.CoverImagePath) ? bm.Novel.CoverImagePath : "/images/default-cover.png")"
+                                 class="img-fluid rounded-start"
+                                 style="height: 100%; width: 100%; object-fit: cover;"
+                                 alt="Cover" />
+                        </div>
+                        <div class="col-8 d-flex flex-column">
+                            <div class="card-body pb-1 overflow-hidden" style="max-height: 150px;">
+                                <h5 class="card-title mb-1 text-truncate">
+                                    <a href="/novels/details/@bm.NovelId" class="text-decoration-none">@bm.Novel.Title</a>
+                                </h5>
+                                <p class="card-text text-muted mb-2" style="font-size: 0.9rem;">
+                                    Reading: <strong>@bm.Chapter.Title</strong>
+                                </p>
+
+                                @if (total > 0)
+                                {
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar" role="progressbar" style="width: @percentage%;" aria-valuenow="@percentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <small class="text-muted">@current of @total chapters read (@percentage%)</small>
+                                }
+                            </div>
+
+                            <div class="card-footer bg-transparent border-0 mt-auto d-flex justify-content-between">
+                                <a class="btn btn-sm btn-outline-primary" href="/chapters/read/@bm.ChapterId">
+                                    <i class="bi bi-play-circle me-1"></i> Continue Reading
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => AskToRemove(bm.NovelId)">
+                                    <i class="bi bi-bookmark-x me-1"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="text-muted">Chapter: @bm.Chapter.Title</div>
-            </a>
+            </div>
         }
     </div>
+
+    <Confirm Title="Remove Bookmark"
+             Message="Are you sure you want to remove this bookmark?"
+             Show="@showDeleteDialog"
+             OnConfirm="ConfirmRemove"
+             OnCancel="CancelRemove" />
+
+    
+     <Pagination TotalPages="@totalPages"
+                 CurrentPage="@currentPage"
+                 GoToPage="GoToPage" />
+    
 }
 
 @code {
-    private List<Bookmark> bookmarks = [];
+    private List<Bookmark> allBookmarks = [];
+    private List<Bookmark> pagedBookmarks = [];
 
-    protected override async Task OnInitializedAsync()
+    private const int pageSize = 15;
+
+    [Parameter, SupplyParameterFromQuery] public int? page { get; set; }
+    private int currentPage => page ?? 1;
+    private int totalPages => (int)Math.Ceiling((double)allBookmarks.Count / pageSize);
+
+    private bool showDeleteDialog = false;
+    private int pendingRemoveNovelId;
+
+    protected override async Task OnParametersSetAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = await UserManager.GetUserAsync(authState.User);
 
         if (user != null)
         {
-            bookmarks = await BookmarkService.GetAllBookmarksAsync(user.Id);
+            allBookmarks = await BookmarkService.GetAllBookmarksAsync(user.Id);
+            UpdatePagedBookmarks();
         }
+    }
+
+    private void UpdatePagedBookmarks()
+    {
+        pagedBookmarks = allBookmarks
+            .Skip((currentPage - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    private void GoToPage(int pageNumber)
+    {
+        var uri = QueryHelpers.AddQueryString(Navigation.Uri.Split('?')[0], new Dictionary<string, string?>
+        {
+            ["page"] = pageNumber.ToString()
+        });
+
+        Navigation.NavigateTo(uri);
+    }
+
+    private void AskToRemove(int novelId)
+    {
+        pendingRemoveNovelId = novelId;
+        showDeleteDialog = true;
+    }
+
+    private async Task ConfirmRemove()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+
+        if (user != null)
+        {
+            await BookmarkService.RemoveBookmarkAsync(user.Id, pendingRemoveNovelId);
+            allBookmarks = await BookmarkService.GetAllBookmarksAsync(user.Id);
+            UpdatePagedBookmarks();
+        }
+
+        showDeleteDialog = false;
+    }
+
+    private void CancelRemove()
+    {
+        showDeleteDialog = false;
     }
 }
