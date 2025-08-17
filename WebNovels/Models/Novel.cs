@@ -25,5 +25,7 @@ namespace WebNovels.Models
 
         public ICollection<Genre> Genres { get; set; } = new List<Genre>();
 
+        public int ReadCount { get; set; }
+
     }
 }

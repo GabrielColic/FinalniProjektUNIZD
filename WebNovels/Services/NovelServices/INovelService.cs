@@ -19,5 +19,9 @@ namespace WebNovels.Services.NovelServices
         Task<(bool success, string? errorMessage)> CreateNovelAsync(Novel novel, IBrowserFile? coverImage, List<int> genreIds, string authorId);
 
         Task<bool> UpdateNovelAsync(Novel novel, IBrowserFile? newCoverImage, List<int> genreIds, string authorId);
+
+        Task<List<Novel>> GetMostReadNovelsAsync(int take);
+
+        Task RecordChapterViewAsync(string userId, int novelId, int chapterId, DateOnly day);
     }
 }

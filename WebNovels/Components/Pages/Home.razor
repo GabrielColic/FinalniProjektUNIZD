@@ -1,7 +1,119 @@
 ﻿@page "/"
+@using System.Linq
+@using WebNovels.Models
+@using WebNovels.Services.NovelServices
+@inject INovelService NovelService
+@inject NavigationManager Nav
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Home — Most Read</PageTitle>
 
-<h1>Hello, world!</h1>
+@if (isLoading)
+{
+    <div class="container py-5">
+        <div class="placeholder-glow">
+            <h1 class="display-6 placeholder col-4"></h1>
+            <p class="placeholder col-6"></p>
+        </div>
+        <div class="row g-3 mt-2">
+            @for (int i = 0; i < 9; i++)
+            {
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card novel-sm-card">
+                        <div class="row g-0 h-100">
+                            <div class="col-4">
+                                <div class="bg-body-secondary h-100 w-100"></div>
+                            </div>
+                            <div class="col-8">
+                                <div class="card-body">
+                                    <h3 class="h6 card-title mb-1 placeholder-glow"><span class="placeholder col-8"></span></h3>
+                                    <div class="small text-body-secondary placeholder-glow"><span class="placeholder col-5"></span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h4 mb-0"><i class="bi bi-bar-chart-line me-2"></i>Most read novels</h1>
+            <a class="btn btn-sm btn-outline-primary" href="/novels?sort=reads">View all</a>
+        </div>
 
-Welcome to your new app.
+        @if (mostRead?.Count == 0)
+        {
+            <div class="alert alert-secondary">No reads yet. Start exploring from the <a href="/novels">library</a>.</div>
+        }
+        else
+        {
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                @for (var i = 0; i < mostRead!.Count; i++)
+                {
+                    var n = mostRead[i];
+                    <div class="col">
+                        <div class="card novel-sm-card border-0 shadow-sm position-relative">
+                            <div class="row g-0 h-100">
+                                <div class="col-4">
+                                    <img src="@(!string.IsNullOrEmpty(n.CoverImagePath) ? n.CoverImagePath : "/images/default-cover.png")"
+                                         class="img-fluid rounded-start"
+                                         style="height: 100%; width: 100%; object-fit: cover;"
+                                         alt="Cover of @n.Title" />
+                                </div>
+
+                                <div class="col-8 d-flex flex-column">
+                                    <div class="card-body py-2 pe-3 overflow-hidden">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <h3 class="h6 card-title mb-1 text-truncate" title="@n.Title">@n.Title</h3>
+                                            <span class="badge bg-primary-subtle text-primary-emphasis ms-2">#@(i + 1)</span>
+                                        </div>
+
+                                        <div class="small text-body-secondary text-truncate" title="@n.Author?.UserName">
+                                            @((n.Author?.UserName) ?? "Unknown")
+                                        </div>
+
+                                        <div class="mt-2 small text-body-secondary d-flex align-items-center gap-2">
+                                            <i class="bi bi-eye"></i><span>@FormatCount(n.ReadCount)</span>
+                                            @if (n.Genres?.Any() == true)
+                                            {
+                                                <span class="vr"></span>
+                                                <span class="text-truncate">@string.Join(", ", n.Genres.Select(g => g.Name).Take(2))</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <!-- footer kept minimal; whole card is clickable -->
+                                    <div class="card-footer bg-transparent border-0 py-2 mt-auto"></div>
+                                </div>
+                            </div>
+
+                            <a class="stretched-link" href="@($"/novels/details/{n.Id}")" aria-label="Open @n.Title"></a>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private List<Novel>? mostRead;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        mostRead = await NovelService.GetMostReadNovelsAsync(9); // smaller grid like bookmarks
+        isLoading = false;
+    }
+
+    private static string FormatCount(int n)
+    {
+        if (n >= 1_000_000) return $"{n / 1_000_000d:0.#}M";
+        if (n >= 1_000) return $"{n / 1_000d:0.#}k";
+        return n.ToString("N0");
+    }
+}
