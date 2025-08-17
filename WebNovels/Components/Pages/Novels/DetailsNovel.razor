@@ -3,9 +3,11 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using WebNovels.Models
 @using WebNovels.Services
+@using WebNovels.Services.BookmarkServices
 @using WebNovels.Services.NovelServices
 @inject INovelService NovelService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IBookmarkService BookmarkService
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -18,7 +20,22 @@
 else
 {
     <div class="card p-3">
-        <h4>@novel.Title</h4>
+        <div class="d-flex gap-2 mt-3">
+            <h4>@novel.Title</h4>
+            @if (isBookmarked)
+            {
+                <button class="btn btn-outline-danger btn-sm mb-2" @onclick="UnsaveNovel">
+                    <i class="bi bi-bookmark-x-fill me-1"></i> Unsave Novel
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-primary btn-sm mb-2" @onclick="SaveNovel">
+                    <i class="bi bi-bookmark-plus me-1"></i> Save Novel
+                </button>
+            }
+
+        </div>
 
         @if (novel.Genres?.Any() == true)
         {
@@ -42,8 +59,10 @@ else
 
         @if (isAuthor)
         {
-            <a href="/novels/edit/@novel.Id" class="btn btn-primary me-2">Edit</a>
-            <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
+            <div class="d-flex gap-2 mt-3">
+                <a href="/novels/edit/@novel.Id" class="btn btn-primary">Edit</a>
+                <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
+            </div>
         }
     </div>
 
@@ -89,6 +108,7 @@ else
     private Novel? novel;
     private string? currentUserId;
     private bool isAuthor = false;
+    private bool isBookmarked = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -105,5 +125,30 @@ else
             return;
 
         isAuthor = novel.AuthorId == currentUserId;
+
+        
+        var bookmark = await BookmarkService.GetBookmarkAsync(currentUserId, novel.Id);
+        isBookmarked = bookmark != null;
+        
+
+    }
+
+    private async Task SaveNovel()
+    {
+        if (currentUserId != null && novel != null && novel.Chapters?.Any() == true)
+        {
+            var firstChapterId = novel.Chapters.OrderBy(c => c.Order).First().Id;
+            await BookmarkService.SetBookmarkAsync(currentUserId, novel.Id, firstChapterId);
+            isBookmarked = true;
+        }
+    }
+
+    private async Task UnsaveNovel()
+    {
+        if (currentUserId != null && novel != null)
+        {
+            await BookmarkService.RemoveBookmarkAsync(currentUserId, novel.Id);
+            isBookmarked = false;
+        }
     }
 }

@@ -231,6 +231,12 @@ else
         {
             isBookmarked = await BookmarkService.IsChapterBookmarkedAsync(user.Id, chapter.Id);
         }
+
+        if (chapter != null && !string.IsNullOrEmpty(currentUserId))
+        {
+            await BookmarkService.SetBookmarkAsync(currentUserId, chapter.NovelId, chapter.Id);
+        }
+
     }
 
     private async Task OnFontSizeChanged(ChangeEventArgs e)

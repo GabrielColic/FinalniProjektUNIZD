@@ -63,11 +63,13 @@ namespace WebNovels.Services.BookmarkServices
         {
             return await _context.Bookmarks
                 .Include(b => b.Novel)
-                .Include(b => b.Chapter)
+                    .ThenInclude(n => n.Chapters)
+                .Include(b => b.Chapter) 
                 .Where(b => b.UserId == userId)
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
         }
+
 
 
     }
