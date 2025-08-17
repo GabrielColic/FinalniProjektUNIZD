@@ -186,3 +186,8 @@ html.dark-mode .theme-toggle-switch {
     padding-top: 0.4rem;
     padding-bottom: 0.4rem;
 }
+
+.novel-sm-card {
+    height: 150px;
+    overflow: hidden;
+}

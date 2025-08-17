@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Emit;
 using WebNovels.Models;
 
 namespace WebNovels.Data
@@ -12,6 +13,7 @@ namespace WebNovels.Data
         public DbSet<Genre> Genres { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<Bookmark> Bookmarks { get; set; }
+        public DbSet<ChapterDailyView> ChapterDailyViews { get; set; } = default!;
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -21,6 +23,16 @@ namespace WebNovels.Data
             builder.Entity<Novel>()
                 .HasMany(n => n.Genres)
                 .WithMany(g => g.Novels);
+
+            builder.Entity<Novel>()
+                .Property(n => n.ReadCount)
+                .HasDefaultValue(0);          
+
+            builder.Entity<Novel>()
+                .HasIndex(n => n.ReadCount);
+
+            builder.Entity<Novel>()
+                .ToTable(t => t.HasCheckConstraint("CK_Novel_ReadCount_NonNegative", "[ReadCount] >= 0"));
 
             builder.Entity<Genre>().HasData(
                 new Genre { Id = 1, Name = "Fantasy" },
@@ -58,6 +70,33 @@ namespace WebNovels.Data
                 .WithMany()
                 .HasForeignKey(b => b.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ChapterDailyView>()
+                .Property(x => x.Day)
+                .HasColumnType("date");
+
+            builder.Entity<ChapterDailyView>()
+                .HasIndex(x => new { x.UserId, x.ChapterId, x.Day })
+                .IsUnique();
+
+            builder.Entity<ChapterDailyView>()
+                .HasOne<Chapter>()
+                .WithMany()
+                .HasForeignKey(x => x.ChapterId)
+                .OnDelete(DeleteBehavior.NoAction); 
+
+            builder.Entity<ChapterDailyView>()
+                .HasOne<Novel>()
+                .WithMany()
+                .HasForeignKey(x => x.NovelId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<ChapterDailyView>()
+                .HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
         }
     }
 }

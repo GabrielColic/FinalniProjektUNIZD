@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using WebNovels.Data;
 using WebNovels.Models;
@@ -117,6 +118,7 @@ namespace WebNovels.Services.NovelServices
                 "oldest" => query.OrderBy(n => n.CreatedAt),
                 "title_asc" => query.OrderBy(n => n.Title),
                 "title_desc" => query.OrderByDescending(n => n.Title),
+                "reads" => query.OrderByDescending(n => n.ReadCount).ThenBy(n => n.Title),
                 _ => query.OrderByDescending(n => n.CreatedAt)
             };
 
@@ -190,6 +192,66 @@ namespace WebNovels.Services.NovelServices
             _db.Novels.Update(existing);
             await _db.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<List<Novel>> GetMostReadNovelsAsync(int take)
+        {
+            return await _db.Novels
+                .AsNoTracking()
+                .Include(n => n.Author)
+                .Include(n => n.Genres)
+                .OrderByDescending(n => n.ReadCount)
+                .ThenBy(n => n.Title)
+                .Take(take)
+                .ToListAsync();
+        }
+
+        public async Task RecordChapterViewAsync(string userId, int novelId, int chapterId, DateOnly day)
+        {
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var view = new ChapterDailyView
+                {
+                    UserId = userId,
+                    NovelId = novelId,
+                    ChapterId = chapterId,
+                    Day = day,
+                    CreatedUtc = DateTime.UtcNow
+                };
+                _db.ChapterDailyViews.Add(view);
+
+                await _db.SaveChangesAsync();
+
+                await _db.Novels
+                    .Where(n => n.Id == novelId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(n => n.ReadCount, n => n.ReadCount + 1));
+
+                await tx.CommitAsync();
+            }
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+            {
+                await tx.RollbackAsync();
+
+                foreach (var e in _db.ChangeTracker.Entries<ChapterDailyView>()
+                                     .Where(e => e.State == EntityState.Added
+                                              && e.Entity.UserId == userId
+                                              && e.Entity.ChapterId == chapterId
+                                              && e.Entity.Day == day)
+                                     .ToList())
+                {
+                    e.State = EntityState.Detached;
+                }
+            }
+        }
+
+
+        private static bool IsUniqueViolation(DbUpdateException ex)
+        {
+            if (ex.InnerException is SqlException sqlEx)
+                return sqlEx.Number == 2627 || sqlEx.Number == 2601;
+
+            return false;
         }
     }
 }

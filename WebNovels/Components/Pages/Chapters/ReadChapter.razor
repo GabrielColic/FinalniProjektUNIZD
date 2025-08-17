@@ -2,17 +2,22 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using WebNovels.Models
 @using WebNovels.Services
 @using WebNovels.Services.BookmarkServices
 @using WebNovels.Services.ChapterServices
 @using WebNovels.Components.Pages.Shared
+@using System.Threading
+@using WebNovels.Services.NovelServices
 @inject IChapterService ChapterService
 @inject ICommentService CommentService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager Navigation
 @inject IBookmarkService BookmarkService
+@inject INovelService NovelService
+@inject WebNovels.Data.ApplicationDbContext Db
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -189,55 +194,112 @@ else
 
     private bool isBookmarked = false;
 
+    private bool _isLoadingChapter = false;
 
 
-    protected override async Task OnInitializedAsync()
+    // protected override async Task OnInitializedAsync()
+    // {
+    //     var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+    //     var user = await UserManager.GetUserAsync(authState.User);
+    //     currentUserId = user?.Id;
+
+    //     if (user != null)
+    //     {
+    //         fontSize = user.PreferredFontSize ?? fontSize;
+    //         fontFamily = user.PreferredFontFamily ?? fontFamily;
+    //     }
+
+    //     chapter = await ChapterService.GetChapterByIdAsync(id);
+
+    //     if (chapter == null)
+    //     {
+    //         isBlocked = true;
+    //         return;
+    //     }
+
+    //     var isAuthor = chapter.Novel?.AuthorId == currentUserId;
+
+    //     if (!chapter.IsPublished && !isAuthor)
+    //     {
+    //         isBlocked = true;
+    //         return;
+    //     }
+
+    //     var visibleChapters = await ChapterService.GetAllVisibleChapters(chapter.NovelId, isAuthor);
+
+    //     var currentIndex = visibleChapters.FindIndex(c => c.Id == chapter.Id);
+    //     if (currentIndex > 0) previousChapter = visibleChapters[currentIndex - 1];
+    //     if (currentIndex < visibleChapters.Count - 1) nextChapter = visibleChapters[currentIndex + 1];
+
+    //     comments = await CommentService.GetCommentsForChapterAsync(chapter.Id);
+
+    //     if (user != null)
+    //     {
+    //         isBookmarked = await BookmarkService.IsChapterBookmarkedAsync(user.Id, chapter.Id);
+    //     }
+
+    //     if (chapter != null && !string.IsNullOrEmpty(currentUserId))
+    //     {
+    //         await BookmarkService.SetBookmarkAsync(currentUserId, chapter.NovelId, chapter.Id);
+    //     }
+
+    // }
+
+    protected override async Task OnParametersSetAsync() => await LoadChapterAsync();
+
+    private async Task LoadChapterAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = await UserManager.GetUserAsync(authState.User);
-        currentUserId = user?.Id;
+        if (_isLoadingChapter) return;
+        _isLoadingChapter = true;
 
-        if (user != null)
+        try
         {
-            fontSize = user.PreferredFontSize ?? fontSize;
-            fontFamily = user.PreferredFontFamily ?? fontFamily;
+            isBlocked = false;
+            previousChapter = null;
+            nextChapter = null;
+
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = await UserManager.GetUserAsync(authState.User);
+            currentUserId = user?.Id;
+
+            if (user != null)
+            {
+                fontSize = user.PreferredFontSize ?? fontSize;
+                fontFamily = user.PreferredFontFamily ?? fontFamily;
+            }
+
+            chapter = await ChapterService.GetChapterByIdAsync(id);
+            if (chapter == null) { isBlocked = true; return; }
+
+            var isAuthor = chapter.Novel?.AuthorId == currentUserId;
+            if (!chapter.IsPublished && !isAuthor) { isBlocked = true; return; }
+
+            if (!isAuthor && !string.IsNullOrEmpty(currentUserId))
+            {
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                await NovelService.RecordChapterViewAsync(currentUserId, chapter.NovelId, chapter.Id, today);
+            }
+
+
+            var visibleChapters = await ChapterService.GetAllVisibleChapters(chapter.NovelId, isAuthor);
+            var currentIndex = visibleChapters.FindIndex(c => c.Id == chapter.Id);
+            if (currentIndex > 0) previousChapter = visibleChapters[currentIndex - 1];
+            if (currentIndex < visibleChapters.Count - 1) nextChapter = visibleChapters[currentIndex + 1];
+
+            comments = await CommentService.GetCommentsForChapterAsync(chapter.Id);
+
+            if (currentUserId != null)
+            {
+                isBookmarked = await BookmarkService.IsChapterBookmarkedAsync(currentUserId, chapter.Id);
+                await BookmarkService.SetBookmarkAsync(currentUserId, chapter.NovelId, chapter.Id);
+            }
         }
-
-        chapter = await ChapterService.GetChapterByIdAsync(id);
-
-        if (chapter == null)
+        finally
         {
-            isBlocked = true;
-            return;
+            _isLoadingChapter = false;
         }
-
-        var isAuthor = chapter.Novel?.AuthorId == currentUserId;
-
-        if (!chapter.IsPublished && !isAuthor)
-        {
-            isBlocked = true;
-            return;
-        }
-
-        var visibleChapters = await ChapterService.GetAllVisibleChapters(chapter.NovelId, isAuthor);
-
-        var currentIndex = visibleChapters.FindIndex(c => c.Id == chapter.Id);
-        if (currentIndex > 0) previousChapter = visibleChapters[currentIndex - 1];
-        if (currentIndex < visibleChapters.Count - 1) nextChapter = visibleChapters[currentIndex + 1];
-
-        comments = await CommentService.GetCommentsForChapterAsync(chapter.Id);
-
-        if (user != null)
-        {
-            isBookmarked = await BookmarkService.IsChapterBookmarkedAsync(user.Id, chapter.Id);
-        }
-
-        if (chapter != null && !string.IsNullOrEmpty(currentUserId))
-        {
-            await BookmarkService.SetBookmarkAsync(currentUserId, chapter.NovelId, chapter.Id);
-        }
-
     }
+
 
     private async Task OnFontSizeChanged(ChangeEventArgs e)
     {

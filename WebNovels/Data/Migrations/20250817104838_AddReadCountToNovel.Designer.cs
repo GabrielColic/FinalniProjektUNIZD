@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebNovels.Data;
 
@@ -11,9 +12,11 @@ using WebNovels.Data;
 namespace WebNovels.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250817104838_AddReadCountToNovel")]
+    partial class AddReadCountToNovel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -308,42 +311,6 @@ namespace WebNovels.Migrations
                     b.ToTable("Chapters");
                 });
 
-            modelBuilder.Entity("WebNovels.Models.ChapterDailyView", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ChapterId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateOnly>("Day")
-                        .HasColumnType("date");
-
-                    b.Property<int>("NovelId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChapterId");
-
-                    b.HasIndex("NovelId");
-
-                    b.HasIndex("UserId", "ChapterId", "Day")
-                        .IsUnique();
-
-                    b.ToTable("ChapterDailyViews");
-                });
-
             modelBuilder.Entity("WebNovels.Models.Comment", b =>
                 {
                     b.Property<int>("Id")
@@ -559,27 +526,6 @@ namespace WebNovels.Migrations
                         .IsRequired();
 
                     b.Navigation("Novel");
-                });
-
-            modelBuilder.Entity("WebNovels.Models.ChapterDailyView", b =>
-                {
-                    b.HasOne("WebNovels.Models.Chapter", null)
-                        .WithMany()
-                        .HasForeignKey("ChapterId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("WebNovels.Models.Novel", null)
-                        .WithMany()
-                        .HasForeignKey("NovelId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("WebNovels.Models.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("WebNovels.Models.Comment", b =>
