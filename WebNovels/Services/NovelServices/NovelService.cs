@@ -253,5 +253,38 @@ namespace WebNovels.Services.NovelServices
 
             return false;
         }
+
+        public async Task<List<(Novel Novel, int ReadCount)>> GetTrendingNovelsAsync(int days, int take)
+        {
+            var since = DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-days));
+
+            var top = await _db.ChapterDailyViews
+                .Where(v => v.Day >= since)
+                .GroupBy(v => v.NovelId)
+                .Select(g => new { NovelId = g.Key, ReadCount = g.Count() })
+                .OrderByDescending(x => x.ReadCount)
+                .ThenBy(x => x.NovelId)
+                .Take(take)
+                .ToListAsync();
+
+            if (top.Count == 0) return new();
+
+            var ids = top.Select(t => t.NovelId).ToList();
+
+            var novels = await _db.Novels
+                .AsNoTracking()
+                .Include(n => n.Author)
+                .Include(n => n.Genres)
+                .Where(n => ids.Contains(n.Id))
+                .ToListAsync();
+
+            var byId = novels.ToDictionary(n => n.Id);
+
+            return top
+                .Where(t => byId.ContainsKey(t.NovelId))
+                .Select(t => (byId[t.NovelId], t.ReadCount))
+                .ToList();
+        }
+
     }
 }

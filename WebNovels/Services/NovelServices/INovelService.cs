@@ -23,5 +23,7 @@ namespace WebNovels.Services.NovelServices
         Task<List<Novel>> GetMostReadNovelsAsync(int take);
 
         Task RecordChapterViewAsync(string userId, int novelId, int chapterId, DateOnly day);
+
+        Task<List<(Novel Novel, int ReadCount)>> GetTrendingNovelsAsync(int days, int take);
     }
 }
