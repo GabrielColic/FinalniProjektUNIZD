@@ -95,7 +95,6 @@
     {
         var e = (System.Text.Json.JsonElement)payload;
 
-        // Requires the hub to send: notificationId, novelId, chapterId, message, createdUtc
         var notif = new Notification
         {
             Id = e.GetProperty("notificationId").GetInt32(),
@@ -103,7 +102,7 @@
             ChapterId = e.GetProperty("chapterId").GetInt32(),
             Message = e.GetProperty("message").GetString() ?? "New chapter",
             CreatedUtc = e.GetProperty("createdUtc").GetDateTime(),
-            UserId = "" // not displayed; satisfies non-null property
+            UserId = ""
         };
 
         items.Insert(0, notif);
@@ -115,17 +114,14 @@
 
     private async Task NavigateAndMarkOne(Notification n)
     {
-        // Optimistic UI: remove immediately so badge decrements
         items.Remove(n);
         StateHasChanged();
 
         var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value;
 
-        // Persist just this one as read
         await NotificationService.MarkReadAsync(n.Id, uid);
 
-        // Close and navigate
         isOpen = false;
         Nav.NavigateTo(ChapterUrl(n));
     }
@@ -137,12 +133,12 @@
 
         await NotificationService.MarkAllReadAsync(uid);
         items.Clear();
-        isOpen = false; // optional: auto-close
+        isOpen = false;
         StateHasChanged();
     }
 
     private string ChapterUrl(Notification n)
-        => $"chapters/read/{n.ChapterId}"; // adjust if your route differs
+        => $"chapters/read/{n.ChapterId}";
 
     public async ValueTask DisposeAsync()
     {

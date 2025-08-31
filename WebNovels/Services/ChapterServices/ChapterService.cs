@@ -67,14 +67,72 @@ namespace WebNovels.Services.ChapterServices
 
         public async Task DeleteChapterAsync(int chapterId, string userId)
         {
-            var chapter = await _db.Chapters.Include(c => c.Novel)
+            var chapter = await _db.Chapters
+                .Include(c => c.Novel)
                 .FirstOrDefaultAsync(c => c.Id == chapterId && c.Novel!.AuthorId == userId);
 
-            if (chapter != null)
+            if (chapter == null)
+                return;
+
+            var fallbackChapterId = await _db.Chapters
+                .Where(c => c.NovelId == chapter.NovelId && c.Id != chapter.Id && c.IsPublished)
+                .OrderByDescending(c => c.Order)
+                .Select(c => c.Id)
+                .FirstOrDefaultAsync();
+
+            if (fallbackChapterId != 0)
             {
-                _db.Chapters.Remove(chapter);
-                await _db.SaveChangesAsync();
+                await _db.Bookmarks
+                    .Where(b => b.ChapterId == chapter.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(b => b.ChapterId, fallbackChapterId));
             }
+            else
+            {
+                await _db.Bookmarks
+                    .Where(b => b.ChapterId == chapter.Id)
+                    .ExecuteDeleteAsync();
+            }
+
+            var trackedBookmarks = _db.ChangeTracker.Entries<Bookmark>()
+                .Where(e => e.State != EntityState.Detached && e.Entity.ChapterId == chapter.Id)
+                .ToList();
+
+            foreach (var e in trackedBookmarks)
+            {
+                if (fallbackChapterId != 0)
+                {
+                    e.Entity.ChapterId = fallbackChapterId;
+                    e.State = EntityState.Modified;
+                }
+                else
+                {
+                    e.State = EntityState.Detached;
+                }
+            }
+
+            await _db.Notifications
+                .Where(n => n.ChapterId == chapter.Id)
+                .ExecuteDeleteAsync();
+
+            foreach (var e in _db.ChangeTracker.Entries<Notification>()
+                                 .Where(e => e.State != EntityState.Detached && e.Entity.ChapterId == chapter.Id)
+                                 .ToList())
+            {
+                e.State = EntityState.Detached;
+            }
+
+            await _db.ChapterDailyViews
+                .Where(v => v.ChapterId == chapter.Id)
+                .ExecuteDeleteAsync();
+
+            await _db.Comments
+                .Where(c => c.ChapterId == chapter.Id)
+                .ExecuteDeleteAsync();
+
+            _db.Entry(chapter).State = EntityState.Detached;
+            await _db.Chapters.Where(c => c.Id == chapter.Id).ExecuteDeleteAsync();
         }
+
+
     }
 }
