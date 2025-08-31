@@ -1,0 +1,152 @@
+﻿@using Microsoft.AspNetCore.Authorization
+@using WebNovels.Models
+@inject WebNovels.Services.NotificationServices.INotificationService NotificationService
+@inject Microsoft.AspNetCore.Components.NavigationManager Nav
+@inject Microsoft.JSInterop.IJSRuntime JS
+@inject Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+@implements IAsyncDisposable
+
+<div class="nav-item dropdown notification-bell">
+    <button class="btn btn-outline-light text-light p-0 position-relative d-inline-flex align-items-center justify-content-center"
+            style="width:40px;height:40px"
+            @onclick="ToggleOpen"
+            title="Notifications"
+            aria-haspopup="true"
+            aria-expanded="@isOpen"
+            type="button">
+        <i class="bi bi-bell fs-5"></i>
+        @if (UnreadCount > 0)
+        {
+            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                @UnreadCount
+                <span class="visually-hidden">unread</span>
+            </span>
+        }
+    </button>
+
+    @if (isOpen)
+    {
+        <div class="dropdown-menu dropdown-menu-end shadow show notification-menu" style="min-width:320px;max-width:420px;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                <strong>Notifications</strong>
+                <button class="btn btn-sm btn-link"
+                        @onclick="MarkAllRead"
+                        disabled="@(UnreadCount == 0)"
+                        type="button">
+                    Mark all read
+                </button>
+            </div>
+
+            <div class="list-group list-group-flush">
+                @if (items.Count == 0)
+                {
+                    <div class="px-3 py-2 text-muted">No notifications</div>
+                }
+                else
+                {
+                    @foreach (var n in items)
+                    {
+                        <a class="list-group-item list-group-item-action text-start"
+                           href="@ChapterUrl(n)"
+                           @onclick="() => NavigateAndMarkOne(n)"
+                           @onclick:preventDefault="true"
+                           @key="n.Id">
+                            <div class="fw-semibold">@n.Message</div>
+                            <div class="small text-muted">@n.CreatedUtc.ToLocalTime()</div>
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isOpen;
+    private List<Notification> items = new();
+    private int UnreadCount => items.Count;
+
+    private DotNetObjectReference<NotificationBell>? _selfRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = auth.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var uid = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value;
+            items = await NotificationService.GetUnreadAsync(uid);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("webnovelsNotifications.start");
+            await JS.InvokeVoidAsync("webnovelsNotifications.subscribe", _selfRef);
+        }
+    }
+
+    [Microsoft.JSInterop.JSInvokable]
+    public Task OnNewNotification(object payload)
+    {
+        var e = (System.Text.Json.JsonElement)payload;
+
+        // Requires the hub to send: notificationId, novelId, chapterId, message, createdUtc
+        var notif = new Notification
+        {
+            Id = e.GetProperty("notificationId").GetInt32(),
+            NovelId = e.GetProperty("novelId").GetInt32(),
+            ChapterId = e.GetProperty("chapterId").GetInt32(),
+            Message = e.GetProperty("message").GetString() ?? "New chapter",
+            CreatedUtc = e.GetProperty("createdUtc").GetDateTime(),
+            UserId = "" // not displayed; satisfies non-null property
+        };
+
+        items.Insert(0, notif);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ToggleOpen() => isOpen = !isOpen;
+
+    private async Task NavigateAndMarkOne(Notification n)
+    {
+        // Optimistic UI: remove immediately so badge decrements
+        items.Remove(n);
+        StateHasChanged();
+
+        var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value;
+
+        // Persist just this one as read
+        await NotificationService.MarkReadAsync(n.Id, uid);
+
+        // Close and navigate
+        isOpen = false;
+        Nav.NavigateTo(ChapterUrl(n));
+    }
+
+    private async Task MarkAllRead()
+    {
+        var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value;
+
+        await NotificationService.MarkAllReadAsync(uid);
+        items.Clear();
+        isOpen = false; // optional: auto-close
+        StateHasChanged();
+    }
+
+    private string ChapterUrl(Notification n)
+        => $"chapters/read/{n.ChapterId}"; // adjust if your route differs
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("webnovelsNotifications.unsubscribe"); } catch { }
+        _selfRef?.Dispose();
+    }
+}

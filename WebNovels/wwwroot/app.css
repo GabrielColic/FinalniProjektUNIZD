@@ -223,4 +223,22 @@ html.dark-mode .theme-toggle-switch {
 
 .badge {
     color: inherit;
-} 
+}
+
+.notification-bell {
+    position: relative;
+}
+
+    .notification-bell .notification-menu {
+        display: block;
+        position: absolute;
+        right: 0;
+        top: 100%;
+        margin-top: .5rem;
+        z-index: 1080;
+    }
+
+.navbar, .navbar .container, .navbar .container-fluid {
+    overflow: visible;
+}
+

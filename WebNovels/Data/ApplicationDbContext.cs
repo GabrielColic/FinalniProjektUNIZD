@@ -14,6 +14,7 @@ namespace WebNovels.Data
         public DbSet<Comment> Comments { get; set; }
         public DbSet<Bookmark> Bookmarks { get; set; }
         public DbSet<ChapterDailyView> ChapterDailyViews { get; set; } = default!;
+        public DbSet<Notification> Notifications { get; set; } = default!;
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -96,6 +97,31 @@ namespace WebNovels.Data
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Notification>()
+                .HasOne(n => n.Novel)
+                .WithMany()
+                .HasForeignKey(n => n.NovelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Notification>()
+                .HasOne(n => n.Chapter)
+                .WithMany()
+                .HasForeignKey(n => n.ChapterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.IsRead, n.CreatedUtc });
+
+            builder.Entity<Bookmark>()
+                .HasIndex(b => new { b.UserId, b.NovelId })
+                .IsUnique();
 
         }
     }

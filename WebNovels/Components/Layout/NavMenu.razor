@@ -1,4 +1,5 @@
 ﻿@using Microsoft.EntityFrameworkCore.Metadata.Internal
+@using WebNovels.Components.Pages.Notifications
 @using WebNovels.Services.DesignServices
 @implements IDisposable
 @inject NavigationManager Navigation
@@ -41,6 +42,8 @@
                         <a class="btn btn-outline-light" href="/bookmarks">
                             <i class="bi bi-bookmark-star me-1"></i> Bookmarks
                         </a>
+
+                        <NotificationBell />
 
                         <div class="dropdown">
                             <a class="btn btn-outline-light dropdown-toggle" href="#" id="accountDropdown" role="button"
