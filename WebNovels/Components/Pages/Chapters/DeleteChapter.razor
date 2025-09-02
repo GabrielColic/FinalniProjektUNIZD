@@ -53,7 +53,7 @@ else if (chapter != null)
         if (chapter != null)
         {
             await ChapterService.DeleteChapterAsync(chapter.Id, chapter.Novel.AuthorId);
-            Navigation.NavigateTo($"/novels/details/{chapter.NovelId}");
+            Navigation.NavigateTo($"/novels/details/{chapter.NovelId}", forceLoad: true);
         }
     }
 }
