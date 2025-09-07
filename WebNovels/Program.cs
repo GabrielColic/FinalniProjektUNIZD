@@ -10,6 +10,7 @@ using WebNovels.Services.ChapterServices;
 using WebNovels.Services.DesignServices;
 using WebNovels.Services.NotificationServices;
 using WebNovels.Services.NovelServices;
+using WebNovels.Services.ReviewServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,7 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
 
 
 

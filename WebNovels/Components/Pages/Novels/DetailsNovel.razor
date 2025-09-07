@@ -5,13 +5,15 @@
 @using WebNovels.Services
 @using WebNovels.Services.BookmarkServices
 @using WebNovels.Services.NovelServices
+@using WebNovels.Services.ReviewServices
 @inject INovelService NovelService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IBookmarkService BookmarkService
+@inject IReviewService ReviewService
 @attribute [Authorize]
 @rendermode InteractiveServer
 
-<h2>Novel Details</h2>
+<h2>Novel</h2>
 
 @if (novel == null)
 {
@@ -19,86 +21,225 @@
 }
 else
 {
-    <div class="card p-3">
-        <div class="d-flex gap-2 mt-3">
-            <h4>@novel.Title</h4>
-            @if (isBookmarked)
-            {
-                <button class="btn btn-outline-danger btn-sm mb-2" @onclick="UnsaveNovel">
-                    <i class="bi bi-bookmark-x-fill me-1"></i> Unsave Novel
-                </button>
-            }
-            else
-            {
-                <button class="btn btn-primary btn-sm mb-2" @onclick="SaveNovel">
-                    <i class="bi bi-bookmark-plus me-1"></i> Save Novel
-                </button>
-            }
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(activeTab == "details" ? "active" : "")"
+                    role="tab" aria-selected="@(activeTab == "details")"
+                    @onclick="SelectDetailsTab">
+                Details
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(activeTab == "reviews" ? "active" : "")"
+                    role="tab" aria-selected="@(activeTab == "reviews")"
+                    @onclick="SelectReviewsTab">
+                Reviews
+            </button>
+        </li>
+    </ul>
 
-        </div>
-
-        @if (novel.Genres?.Any() == true)
-        {
-            <p>
-                <strong>Genres:</strong>
-                @foreach (var genre in novel.Genres)
+    @if (activeTab == "details")
+    {
+        <!-- DETAILS TAB CONTENT (your original UI) -->
+        <div class="card p-3">
+            <div class="d-flex gap-2 mt-3">
+                <h4>@novel.Title</h4>
+                @if (isBookmarked)
                 {
-                    <span class="badge bg-secondary me-1">@genre.Name</span>
+                    <button class="btn btn-outline-danger btn-sm mb-2" @onclick="UnsaveNovel">
+                        <i class="bi bi-bookmark-x-fill me-1"></i> Unsave Novel
+                    </button>
                 }
-            </p>
-        }
+                else
+                {
+                    <button class="btn btn-primary btn-sm mb-2" @onclick="SaveNovel">
+                        <i class="bi bi-bookmark-plus me-1"></i> Save Novel
+                    </button>
+                }
+            </div>
 
-        <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
-             alt="Cover"
-             class="img-thumbnail"
-             style="width: 150px; height: 150px; object-fit: cover;" />
+            @if (novel.Genres?.Any() == true)
+            {
+                <p>
+                    <strong>Genres:</strong>
+                    @foreach (var genre in novel.Genres)
+                    {
+                        <span class="badge bg-secondary me-1">@genre.Name</span>
+                    }
+                </p>
+            }
 
-        <p><strong>Synopsis:</strong> @novel.Synopsis</p>
-        <p><strong>Author:</strong> @novel.Author?.UserName</p>
-        <p><strong>Created At:</strong> @novel.CreatedAt.ToShortDateString()</p>
+            <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
+                 alt="Cover"
+                 class="img-thumbnail"
+                 style="width: 150px; height: 150px; object-fit: cover;" />
+
+            <p><strong>Synopsis:</strong> @novel.Synopsis</p>
+            <p><strong>Author:</strong> @novel.Author?.UserName</p>
+            <p><strong>Created At:</strong> @novel.CreatedAt.ToShortDateString()</p>
+
+            @if (isAuthor)
+            {
+                <div class="d-flex gap-2 mt-3">
+                    <a href="/novels/edit/@novel.Id" class="btn btn-primary">Edit</a>
+                    <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
+                </div>
+            }
+        </div>
 
         @if (isAuthor)
         {
-            <div class="d-flex gap-2 mt-3">
-                <a href="/novels/edit/@novel.Id" class="btn btn-primary">Edit</a>
-                <a href="/novels/delete/@novel.Id" class="btn btn-danger">Delete</a>
-            </div>
+            <a class="btn btn-success mb-3 mt-3" href="/chapters/create/@novel.Id">
+                <i class="bi bi-plus-circle me-1"></i> Add Chapter
+            </a>
         }
-    </div>
 
-    @if (isAuthor)
-    {
-        <a class="btn btn-success mb-3" href="/chapters/create/@novel.Id">
-            <i class="bi bi-plus-circle me-1"></i> Add Chapter
-        </a>
+        @if (novel.Chapters?.Any() == true)
+        {
+            <h5 class="mt-4">Chapters</h5>
+            <ul>
+                @foreach (var chapter in novel.Chapters.OrderBy(c => c.Order))
+                {
+                    <li class="mb-2">
+                        <div class="d-flex align-items-center flex-wrap gap-2">
+                            <a href="/chapters/read/@chapter.Id" target="_blank" class="fw-semibold me-2">
+                                @chapter.Title
+                            </a>
+
+                            @if (isAuthor && !chapter.IsPublished)
+                            {
+                                <span class="badge bg-warning text-dark">Draft</span>
+                            }
+
+                            @if (isAuthor)
+                            {
+                                <a class="btn btn-sm btn-outline-primary ms-2" href="/chapters/edit/@chapter.Id">Edit</a>
+                                <a class="btn btn-sm btn-outline-danger" href="/chapters/delete/@chapter.Id">Delete</a>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
     }
-
-    @if (novel.Chapters?.Any() == true)
+    else if (activeTab == "reviews")
     {
-        <h5 class="mt-4">Chapters</h5>
-        <ul>
-            @foreach (var chapter in novel.Chapters.OrderBy(c => c.Order))
+        <!-- REVIEWS TAB CONTENT -->
+        <div>
+            <div class="mb-3">
+                <strong>Average:</strong> @avgRating.ToString("0.0") / 5
+                <span class="text-muted">(@reviewCount review@(reviewCount == 1 ? "" : "s"))</span>
+            </div>
+
+            @if (!string.IsNullOrEmpty(currentUserId))
             {
-                <li class="mb-2">
-                    <div class="d-flex align-items-center flex-wrap gap-2">
-                        <a href="/chapters/read/@chapter.Id" target="_blank" class="fw-semibold me-2">
-                            @chapter.Title
-                        </a>
+                <div class="card p-3 mb-3">
+                    <h6>@(myReviewId.HasValue ? "Edit your review" : "Write a review")</h6>
 
-                        @if (isAuthor && !chapter.IsPublished)
+                    <div class="d-flex align-items-center gap-1 mb-2">
+                        @for (var i = 1; i <= 5; i++)
                         {
-                            <span class="badge bg-warning text-dark">Draft</span>
+                            var starValue = i;
+                            <button type="button"
+                                    class="btn btn-sm @(myRating >= starValue ? "btn-warning" : "btn-outline-secondary")"
+                                    @onclick="() => SetRating(starValue)"
+                                    aria-label="Rate @starValue out of 5">
+                                ★
+                            </button>
                         }
-
-                        @if (isAuthor)
-                        {
-                            <a class="btn btn-sm btn-outline-primary ms-2" href="/chapters/edit/@chapter.Id">Edit</a>
-                            <a class="btn btn-sm btn-outline-danger" href="/chapters/delete/@chapter.Id">Delete</a>
-                        }
+                        <span class="ms-2">@Math.Clamp(myRating, 0, 5)/5</span>
                     </div>
-                </li>
+
+                    <input class="form-control form-control-lg fw-semibold mb-2" @bind="myTitle" placeholder="Title (optional)" />
+                    <textarea class="form-control mb-2" rows="4" @bind="myBody" placeholder="Your thoughts..."></textarea>
+
+                    <!-- Right-aligned, compact action buttons -->
+                    <div class="d-flex justify-content-end gap-2 mt-2">
+                        @if (myReviewId.HasValue)
+                        {
+                            <button class="btn btn-sm btn-outline-danger w-auto"
+                                    @onclick="(() => DeleteReview(myReviewId!.Value))">
+                                Delete
+                            </button>
+                        }
+                        <button class="btn btn-sm btn-primary w-auto"
+                                @onclick="SubmitReview"
+                                disabled="@(myRating < 1)">
+                            @(myReviewId.HasValue ? "Save changes" : "Submit review")
+                        </button>
+                    </div>
+                </div>
             }
-        </ul>
+            else
+            {
+                <div class="alert alert-info">Log in to write a review.</div>
+            }
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <label class="me-2">Sort:</label>
+                    <select class="form-select form-select-sm d-inline-block w-auto"
+                            @bind="sort" @bind:after="OnSortChanged">
+                        <option value="newest">Newest</option>
+                        <option value="oldest">Oldest</option>
+                        <option value="highest">Highest rating</option>
+                        <option value="lowest">Lowest rating</option>
+                    </select>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-1"
+                            disabled="@(page <= 1)" @onclick="PrevPage">
+                        Prev
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            disabled="@((page * pageSize) >= totalReviews)" @onclick="NextPage">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            @if (reviews.Count == 0)
+            {
+                <p class="text-muted">No reviews yet.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled">
+                    @foreach (var r in reviews)
+                    {
+                        <li class="mb-3 border rounded p-3">
+                            <div class="d-flex justify-content-between">
+                                <div class="pe-3">
+                                    <strong class="text-warning">@(new string('★', r.Rating))</strong>
+                                    <span class="text-muted ms-2">
+                                        by @r.User?.UserName on @r.CreatedUtc.ToLocalTime().ToShortDateString()
+                                        @if (r.IsEdited)
+                                        {
+                                            <em>(edited)</em>
+                                        }
+                                    </span>
+
+                                    @if (!string.IsNullOrWhiteSpace(r.Title))
+                                    {
+                                        <div class="mt-1 mb-1 fw-bold fs-5">@r.Title</div>
+                                    }
+
+                                    <div>@r.Body</div>
+                                </div>
+
+                                @if (r.UserId == currentUserId)
+                                {
+                                    <div class="text-nowrap">
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteReview(r.Id)">Delete</button>
+                                    </div>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
     }
 }
 
@@ -110,6 +251,25 @@ else
     private bool isAuthor = false;
     private bool isBookmarked = false;
 
+    // Tabs
+    private string activeTab = "details";
+    private bool reviewsLoaded = false;
+
+    // Reviews state
+    private List<Review> reviews = new();
+    private int totalReviews = 0;
+    private int page = 1;
+    private int pageSize = 10;
+    private string sort = "newest";
+
+    private int myRating = 0;
+    private string? myTitle;
+    private string? myBody;
+    private int? myReviewId = null;
+
+    private double avgRating = 0;
+    private int reviewCount = 0;
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -120,17 +280,29 @@ else
             return;
 
         novel = await NovelService.GetNovelByIdAsync(id, currentUserId);
-
         if (novel == null)
             return;
 
         isAuthor = novel.AuthorId == currentUserId;
 
-        
         var bookmark = await BookmarkService.GetBookmarkAsync(currentUserId, novel.Id);
         isBookmarked = bookmark != null;
-        
+    }
 
+    private Task SelectDetailsTab()
+    {
+        activeTab = "details";
+        return Task.CompletedTask;
+    }
+
+    private async Task SelectReviewsTab()
+    {
+        activeTab = "reviews";
+        if (!reviewsLoaded)
+        {
+            await LoadReviews();
+            reviewsLoaded = true;
+        }
     }
 
     private async Task SaveNovel()
@@ -150,5 +322,91 @@ else
             await BookmarkService.RemoveBookmarkAsync(currentUserId, novel.Id);
             isBookmarked = false;
         }
+    }
+
+    // --- Reviews logic ---
+
+    private async Task LoadReviews()
+    {
+        var result = await ReviewService.GetForNovelAsync(id, sort, page, pageSize);
+        reviews = result.Items.ToList();
+        totalReviews = result.Total;
+
+        var summary = await ReviewService.GetSummaryAsync(id);
+        avgRating = summary.Average;
+        reviewCount = summary.Count;
+
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            var mine = await ReviewService.GetUserReviewAsync(id, currentUserId);
+            if (mine != null)
+            {
+                myReviewId = mine.Id;
+                myRating = mine.Rating;
+                myTitle = mine.Title;
+                myBody = mine.Body;
+            }
+            else
+            {
+                myReviewId = null;
+                myRating = 0;
+                myTitle = null;
+                myBody = null;
+            }
+        }
+    }
+
+    private async Task SubmitReview()
+    {
+        if (currentUserId is null || novel is null || myRating < 1) return;
+        await ReviewService.CreateOrUpdateAsync(novel.Id, currentUserId, myRating, myTitle, myBody ?? "");
+        await LoadReviews();
+    }
+
+    private void EditReview(Review r)
+    {
+        myReviewId = r.Id;
+        myRating = r.Rating;
+        myTitle = r.Title;
+        myBody = r.Body;
+    }
+
+    private async Task DeleteReview(int reviewId)
+    {
+        if (currentUserId is null) return;
+        var ok = await ReviewService.DeleteAsync(reviewId, currentUserId);
+        if (ok)
+        {
+            if (myReviewId == reviewId)
+            {
+                myReviewId = null; myRating = 0; myTitle = null; myBody = null;
+            }
+            await LoadReviews();
+        }
+    }
+
+    private async Task OnSortChanged()
+    {
+        page = 1;
+        await LoadReviews();
+    }
+
+    private async Task PrevPage()
+    {
+        if (page <= 1) return;
+        page--;
+        await LoadReviews();
+    }
+
+    private async Task NextPage()
+    {
+        if ((page * pageSize) >= totalReviews) return;
+        page++;
+        await LoadReviews();
+    }
+
+    private void SetRating(int value)
+    {
+        myRating = Math.Clamp(value, 1, 5);
     }
 }

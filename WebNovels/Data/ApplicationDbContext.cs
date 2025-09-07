@@ -15,6 +15,7 @@ namespace WebNovels.Data
         public DbSet<Bookmark> Bookmarks { get; set; }
         public DbSet<ChapterDailyView> ChapterDailyViews { get; set; } = default!;
         public DbSet<Notification> Notifications { get; set; } = default!;
+        public DbSet<Review> Reviews { get; set; } = default!;
 
 
         protected override void OnModelCreating(ModelBuilder builder)
@@ -135,6 +136,26 @@ namespace WebNovels.Data
             builder.Entity<Bookmark>()
                 .HasIndex(b => new { b.UserId, b.NovelId })
                 .IsUnique();
+
+            builder.Entity<Review>(e =>
+            {
+                e.HasIndex(r => new { r.NovelId, r.UserId }).IsUnique();
+
+                e.Property(r => r.Rating).IsRequired();
+                e.Property(r => r.Body).HasMaxLength(4000).IsRequired();
+                e.Property(r => r.Title).HasMaxLength(120);
+
+                e.HasOne(r => r.Novel)
+                    .WithMany(n => n.Reviews)
+                    .HasForeignKey(r => r.NovelId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(r => r.User)
+                    .WithMany()
+                    .HasForeignKey(r => r.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
 
         }
     }
