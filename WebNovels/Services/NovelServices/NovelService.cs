@@ -77,20 +77,65 @@ namespace WebNovels.Services.NovelServices
 
         public async Task<bool> DeleteNovelAsync(int id, string currentUserId)
         {
-            var novel = await _db.Novels.Include(n => n.Author).FirstOrDefaultAsync(n => n.Id == id);
+            var novelInfo = await _db.Novels
+                .Where(n => n.Id == id)
+                .Select(n => new { n.AuthorId, n.CoverImagePath })
+                .FirstOrDefaultAsync();
 
-            if (novel == null || novel.AuthorId != currentUserId)
+            if (novelInfo is null || novelInfo.AuthorId != currentUserId)
                 return false;
 
-            if (!string.IsNullOrEmpty(novel.CoverImagePath))
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
             {
-                _fileUploadService.DeleteFile(novel.CoverImagePath);
-            }
+                var chapterIds = await _db.Chapters
+                    .Where(c => c.NovelId == id)
+                    .Select(c => c.Id)
+                    .ToListAsync();
 
-            _db.Novels.Remove(novel);
-            await _db.SaveChangesAsync();
-            return true;
+                await _db.Notifications
+                    .Where(n => n.NovelId == id || chapterIds.Contains(n.ChapterId))
+                    .ExecuteDeleteAsync();
+
+                await _db.ChapterDailyViews
+                    .Where(v => v.NovelId == id || chapterIds.Contains(v.ChapterId))
+                    .ExecuteDeleteAsync();
+
+                await _db.Comments
+                    .Where(c => chapterIds.Contains(c.ChapterId))
+                    .ExecuteDeleteAsync();
+
+                // Optional but harmless even if you keep DB cascade:
+                await _db.Bookmarks
+                    .Where(b => b.NovelId == id)
+                    .ExecuteDeleteAsync();
+
+                // 2) Delete the novel (Chapters and/or Bookmarks can cascade at DB level)
+                var deleted = await _db.Novels
+                    .Where(n => n.Id == id && n.AuthorId == currentUserId)
+                    .ExecuteDeleteAsync();
+
+                if (deleted == 0)
+                {
+                    await tx.RollbackAsync();
+                    return false;
+                }
+
+                await tx.CommitAsync();
+
+                // 3) Remove the cover file after DB success
+                if (!string.IsNullOrWhiteSpace(novelInfo.CoverImagePath))
+                    _fileUploadService.DeleteFile(novelInfo.CoverImagePath);
+
+                return true;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                return false;
+            }
         }
+
 
         public async Task<List<Genre>> GetAllGenresAsync()
         {

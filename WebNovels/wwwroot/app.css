@@ -221,8 +221,19 @@ html.dark-mode .theme-toggle-switch {
         box-shadow: 0 .65rem 1.5rem rgba(0,0,0,.15);
     }
 
-.badge {
-    color: inherit;
+.badge.bg-secondary {
+    background-color: #eef2ff !important;
+    color: #1e40af !important;
+    border: 1px solid #c7d2fe !important;
+    font-weight: 600;
+}
+
+
+html.dark-mode .badge.bg-secondary {
+    background-color: #3a3f46 !important;
+    color: #e9ecef !important;
+    border: 1px solid #505760 !important;
+    font-weight: 600;
 }
 
 .notification-bell {

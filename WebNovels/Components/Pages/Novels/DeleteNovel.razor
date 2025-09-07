@@ -57,7 +57,7 @@ else
             var success = await NovelService.DeleteNovelAsync(id, currentUserId);
             if (success)
             {
-                Navigation.NavigateTo("/novels");
+                Navigation.NavigateTo("/novels", forceLoad: true);
             }
         }
     }

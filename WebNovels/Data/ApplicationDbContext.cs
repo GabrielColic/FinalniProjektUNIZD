@@ -35,6 +35,19 @@ namespace WebNovels.Data
             builder.Entity<Novel>()
                 .ToTable(t => t.HasCheckConstraint("CK_Novel_ReadCount_NonNegative", "[ReadCount] >= 0"));
 
+            builder.Entity<Novel>()
+                .HasOne(n => n.Author)
+                .WithMany()
+                .HasForeignKey(n => n.AuthorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Chapter>()
+                .HasOne(c => c.Novel)
+                .WithMany(n => n.Chapters)
+                .HasForeignKey(c => c.NovelId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
             builder.Entity<Genre>().HasData(
                 new Genre { Id = 1, Name = "Fantasy" },
                 new Genre { Id = 2, Name = "Romance" },
@@ -64,7 +77,7 @@ namespace WebNovels.Data
                 .HasOne(b => b.Novel)
                 .WithMany()
                 .HasForeignKey(b => b.NovelId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Bookmark>()
                 .HasOne(b => b.User)
