@@ -115,7 +115,9 @@ else
 
     <!-- Comments Section -->
     <hr class="mt-5" />
-    <h5>Comments</h5>
+    <h5>
+        Comments <span class="text-muted">(@VisibleCommentCount)</span>
+    </h5>
 
     @if (comments == null)
     {
@@ -123,46 +125,177 @@ else
     }
     else
     {
-        @if (!comments.Any())
+        @if (rootComments.Count == 0)
         {
             <p class="text-muted">No comments yet. Be the first to comment!</p>
         }
         else
         {
-            @foreach (var c in comments)
+            @foreach (var root in rootComments)
             {
                 <div class="border rounded p-2 mb-2">
-                    <strong>@c.User.UserName</strong>
-                    <span class="text-muted" style="font-size: 0.8rem;"> • @c.CreatedAt.ToLocalTime().ToString("g")</span>
+                    <strong>@(root.User?.UserName ?? "Unknown")</strong>
+                    <span class="text-muted" style="font-size: 0.8rem;"> • @root.CreatedAt.ToLocalTime().ToString("g")</span>
 
-                    @if (editingCommentId == c.Id)
+                    @if (editingCommentId == root.Id)
                     {
-                        <textarea class="form-control my-2" @bind="editContent" rows="3"></textarea>
+                        <textarea class="form-control my-2" @bind="editContent" @bind:event="oninput" rows="3"></textarea>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-sm btn-success" @onclick="() => SaveEditedComment(c.Id)">Save</button>
+                            <button class="btn btn-sm btn-success" @onclick="() => SaveEditedComment(root.Id)">Save</button>
                             <button class="btn btn-sm btn-secondary" @onclick="CancelEdit">Cancel</button>
                         </div>
                     }
                     else
                     {
-                        <p class="mb-1">@c.Content</p>
-
-                        @if (IsUserAuthor(c.UserId))
+                        @if (root.IsDeleted)
                         {
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditingComment(c.Id, c.Content)">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteComment(c.Id)">Delete</button>
+                            <p class="mb-1 text-muted fst-italic">[deleted]</p>
+                        }
+                        else
+                        {
+                            <p class="mb-1">@root.Content</p>
+                        }
+
+                        <div class="d-flex gap-2">
+                            @if (!root.IsDeleted && !string.IsNullOrEmpty(currentUserId) && 0 < MaxDepth)
+                            {
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => ToggleReply(root.Id)">Reply</button>
+                            }
+                            @if (!root.IsDeleted && IsUserAuthor(root.UserId))
+                            {
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditingComment(root.Id, root.Content)">Edit</button>
+                            }
+                            @if (IsUserAuthor(root.UserId))
+                            {
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteComment(root.Id)">Delete</button>
+                            }
+                        </div>
+                    }
+
+                    @* Inline reply box under the root *@
+                    @if (replyOpen.TryGetValue(root.Id, out var openRoot) && openRoot && !root.IsDeleted)
+                    {
+                        <div class="mt-2">
+                            <textarea class="form-control" rows="2" placeholder="Write a reply…"
+                                      @bind="replyText[root.Id]" @bind:event="oninput"></textarea>
+                            <div class="d-flex justify-content-end gap-2 mt-2">
+                                <button class="btn btn-primary btn-sm"
+                                        disabled="@(!replyText.TryGetValue(root.Id, out var t) || string.IsNullOrWhiteSpace(t))"
+                                        @onclick="() => PostReplyAsync(root.Id)">
+                                    Reply
+                                </button>
+                                <button class="btn btn-secondary btn-sm" @onclick="() => CancelReply(root.Id)">Cancel</button>
+                            </div>
+                        </div>
+                    }
+
+                    @* Accordion trigger for replies *@
+                    @{
+                        var allReplies = AllReplyCountForRoot(root.Id);
+                    }
+                    @if (allReplies > 0)
+                    {
+                        <div class="mt-2">
+                            <button class="btn btn-link btn-sm p-0"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#replies-@root.Id"
+                                    aria-expanded="false"
+                                    aria-controls="replies-@root.Id">
+                                View replies (@allReplies)
+                            </button>
+                        </div>
+                    }
+
+                    @* Replies panel *@
+                    <div class="collapse mt-2" id="replies-@root.Id">
+                        @foreach (var fc in flatComments.Where(x => x.Comment.RootCommentId == root.Id && x.Level > 0))
+                        {
+                            var c = fc.Comment;
+                            <div class="border rounded p-2 mb-2" style="margin-left:@((fc.Level - 1) * 16)px">
+                                <strong>@(c.User?.UserName ?? "Unknown")</strong>
+                                <span class="text-muted" style="font-size: 0.8rem;"> • @c.CreatedAt.ToLocalTime().ToString("g")</span>
+
+                                @if (editingCommentId == c.Id)
+                                {
+                                    <textarea class="form-control my-2" @bind="editContent" @bind:event="oninput" rows="3"></textarea>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-success" @onclick="() => SaveEditedComment(c.Id)">Save</button>
+                                        <button class="btn btn-sm btn-secondary" @onclick="CancelEdit">Cancel</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @if (c.IsDeleted)
+                                    {
+                                        <p class="mb-1 text-muted fst-italic">[deleted]</p>
+                                    }
+                                    else
+                                    {
+                                        <p class="mb-1">@c.Content</p>
+                                    }
+
+                                    <div class="d-flex gap-2">
+                                        @if (!c.IsDeleted && !string.IsNullOrEmpty(currentUserId) && fc.Level < MaxDepth)
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ToggleReply(c.Id)">Reply</button>
+                                        }
+                                        @if (!c.IsDeleted && IsUserAuthor(c.UserId))
+                                        {
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditingComment(c.Id, c.Content)">Edit</button>
+                                        }
+                                        @if (IsUserAuthor(c.UserId))
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteComment(c.Id)">Delete</button>
+                                        }
+                                    </div>
+                                }
+
+                                @if (replyOpen.TryGetValue(c.Id, out var open) && open && !c.IsDeleted)
+                                {
+                                    <div class="mt-2">
+                                        <textarea class="form-control" rows="2" placeholder="Write a reply…"
+                                                  @bind="replyText[c.Id]" @bind:event="oninput"></textarea>
+                                        <div class="d-flex justify-content-end gap-2 mt-2">
+                                            <button class="btn btn-primary btn-sm"
+                                                    disabled="@(!replyText.TryGetValue(c.Id, out var t) || string.IsNullOrWhiteSpace(t))"
+                                                    @onclick="() => PostReplyAsync(c.Id)">
+                                                Reply
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" @onclick="() => CancelReply(c.Id)">Cancel</button>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         }
-                    }
+                    </div>
                 </div>
             }
         }
 
-        <div class="mt-3 pb-5">
-            <textarea class="form-control mb-2" @bind="newComment" placeholder="Write a comment..." rows="3"></textarea>
-            <button class="btn btn-primary btn-sm" @onclick="SubmitComment">Post Comment</button>
-        </div>
+
+        @if (!string.IsNullOrEmpty(currentUserId))
+        {
+            <div class="mt-3 pb-5">
+                <textarea class="form-control mb-2"
+                          @bind="newComment"
+                          @bind:event="oninput"
+                          placeholder="Write a comment..."
+                          rows="3">
+                </textarea>
+                <button class="btn btn-primary btn-sm"
+                        @onclick="SubmitComment"
+                        disabled="@string.IsNullOrWhiteSpace(newComment)">
+                    Post Comment
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-secondary py-2">Sign in to post a comment.</div>
+            <div class="pb-5"></div>
+        }
+
+
     }
 
     <Confirm Title="Delete Comment"
@@ -195,6 +328,23 @@ else
     private bool isBookmarked = false;
 
     private bool _isLoadingChapter = false;
+
+    private const int MaxDepth = 6;
+    private List<(Comment Comment, int Level)> flatComments = new();
+
+    private readonly Dictionary<int, bool> replyOpen = new();
+    private readonly Dictionary<int, string> replyText = new();
+
+    private int VisibleCommentCount => comments?.Count(c => !c.IsDeleted) ?? 0;
+
+    private List<Comment> rootComments = new();
+    private Dictionary<int, List<Comment>> childMap = new();
+
+    private int AllReplyCountForRoot(int rootId) =>
+        flatComments.Count(fc => fc.Level > 0
+                              && fc.Comment.RootCommentId == rootId
+                              && !fc.Comment.IsDeleted);
+
 
     protected override async Task OnParametersSetAsync() => await LoadChapterAsync();
 
@@ -238,6 +388,9 @@ else
             if (currentIndex < visibleChapters.Count - 1) nextChapter = visibleChapters[currentIndex + 1];
 
             comments = await CommentService.GetCommentsForChapterAsync(chapter.Id);
+
+            RebuildFlatComments();
+
 
             if (currentUserId != null)
             {
@@ -290,6 +443,8 @@ else
         newComment = string.Empty;
 
         comments = await CommentService.GetCommentsForChapterAsync(chapter.Id);
+        RebuildFlatComments();
+
     }
 
     private bool IsUserAuthor(string userId)
@@ -315,6 +470,7 @@ else
         editingCommentId = null;
         editContent = string.Empty;
         comments = await CommentService.GetCommentsForChapterAsync(chapter!.Id);
+        RebuildFlatComments();
     }
 
     private void DeleteComment(int commentId)
@@ -329,6 +485,7 @@ else
         {
             await CommentService.DeleteCommentAsync(pendingDeleteCommentId.Value, currentUserId!);
             comments = await CommentService.GetCommentsForChapterAsync(chapter!.Id);
+            RebuildFlatComments();
         }
 
         showDeleteDialog = false;
@@ -357,6 +514,72 @@ else
 
         isBookmarked = !isBookmarked;
     }
+
+    private void RebuildFlatComments()
+    {
+        flatComments.Clear();
+        rootComments.Clear();
+        childMap = new();
+
+        if (comments == null || comments.Count == 0) return;
+
+        var roots = comments
+            .Where(c => c.ParentCommentId == null)
+            .OrderBy(c => c.CreatedAt)
+            .ToList();
+
+        var byParent = comments
+            .Where(c => c.ParentCommentId.HasValue)
+            .OrderBy(c => c.CreatedAt)
+            .GroupBy(c => c.ParentCommentId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        rootComments = roots;
+        childMap = byParent;
+
+        void Walk(Comment c, int level)
+        {
+            flatComments.Add((c, level));
+            if (byParent.TryGetValue(c.Id, out var kids))
+            {
+                foreach (var child in kids)
+                    Walk(child, level + 1);
+            }
+        }
+
+        foreach (var r in roots)
+            Walk(r, 0);
+    }
+
+
+    private void ToggleReply(int commentId)
+    {
+        replyOpen[commentId] = !replyOpen.GetValueOrDefault(commentId);
+        if (replyOpen[commentId] && !replyText.ContainsKey(commentId))
+            replyText[commentId] = "";
+    }
+
+    private void CancelReply(int commentId)
+    {
+        replyOpen[commentId] = false;
+        replyText.Remove(commentId);
+    }
+
+    private async Task PostReplyAsync(int parentCommentId)
+    {
+        if (string.IsNullOrEmpty(currentUserId) || chapter == null) return;
+        if (!replyText.TryGetValue(parentCommentId, out var text) || string.IsNullOrWhiteSpace(text)) return;
+
+        await CommentService.AddCommentAsync(currentUserId!, chapter.Id, text.Trim(), parentCommentId, MaxDepth);
+
+        replyText.Remove(parentCommentId);
+        replyOpen[parentCommentId] = false;
+
+        comments = await CommentService.GetCommentsForChapterAsync(chapter.Id);
+        RebuildFlatComments();
+    }
+
+
 
 }
 

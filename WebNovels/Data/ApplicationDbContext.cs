@@ -68,6 +68,28 @@ namespace WebNovels.Data
                 .HasForeignKey(c => c.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.Entity<Comment>()
+                .HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Comment>()
+                .Property(c => c.Depth)
+                .HasDefaultValue(0);
+
+            builder.Entity<Comment>()
+                .ToTable(t => t.HasCheckConstraint("CK_Comment_Depth_NonNegative", "[Depth] >= 0"));
+
+            builder.Entity<Comment>()
+                .HasIndex(c => new { c.ChapterId, c.ParentCommentId, c.CreatedAt });
+
+            builder.Entity<Comment>()
+                .HasIndex(c => new { c.ChapterId, c.RootCommentId, c.CreatedAt });
+
+            builder.Entity<Comment>()
+                .HasIndex(c => c.ParentCommentId);
+
             builder.Entity<Bookmark>()
                 .HasOne(b => b.Chapter)
                 .WithMany()

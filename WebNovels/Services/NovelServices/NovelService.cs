@@ -105,12 +105,10 @@ namespace WebNovels.Services.NovelServices
                     .Where(c => chapterIds.Contains(c.ChapterId))
                     .ExecuteDeleteAsync();
 
-                // Optional but harmless even if you keep DB cascade:
                 await _db.Bookmarks
                     .Where(b => b.NovelId == id)
                     .ExecuteDeleteAsync();
 
-                // 2) Delete the novel (Chapters and/or Bookmarks can cascade at DB level)
                 var deleted = await _db.Novels
                     .Where(n => n.Id == id && n.AuthorId == currentUserId)
                     .ExecuteDeleteAsync();
@@ -123,7 +121,6 @@ namespace WebNovels.Services.NovelServices
 
                 await tx.CommitAsync();
 
-                // 3) Remove the cover file after DB success
                 if (!string.IsNullOrWhiteSpace(novelInfo.CoverImagePath))
                     _fileUploadService.DeleteFile(novelInfo.CoverImagePath);
 

@@ -253,3 +253,57 @@ html.dark-mode .badge.bg-secondary {
     overflow: visible;
 }
 
+.chapter-content {
+    color: inherit;
+}
+
+
+html.dark-mode .chapter-content {
+    color: #e0e0e0 !important;
+    background-color: transparent; 
+}
+
+    html.dark-mode .chapter-content :is(p, span, li, blockquote, h1, h2, h3, h4, h5, h6) {
+        color: inherit !important;
+    }
+
+    html.dark-mode .chapter-content *[style*="color"] {
+        color: inherit !important;
+    }
+
+    html.dark-mode .chapter-content a {
+        color: #9ec5fe !important;
+    }
+
+        html.dark-mode .chapter-content a:hover {
+            color: #b6d4fe !important;
+        }
+
+    html.dark-mode .chapter-content pre,
+    html.dark-mode .chapter-content code,
+    html.dark-mode .chapter-content kbd,
+    html.dark-mode .chapter-content samp {
+        background-color: #1f1f1f !important;
+        color: #e6e6e6 !important;
+    }
+
+    html.dark-mode .chapter-content table {
+        background-color: #262626 !important;
+        color: #e0e0e0 !important;
+    }
+
+    html.dark-mode .chapter-content th,
+    html.dark-mode .chapter-content td {
+        border-color: #444 !important;
+    }
+
+    html.dark-mode .chapter-content blockquote {
+        color: #cfd3d8 !important;
+        border-left: 4px solid #555 !important;
+    }
+
+    html.dark-mode .chapter-content hr {
+        border-top: 1px solid #444 !important;
+    }
+
+
