@@ -341,9 +341,20 @@ html.dark-mode .adv-search-table .rating-cell .text-warning {
     color: #f6c544 !important;
 }
 
+
 .site-footer {
-    background: var(--bs-body-bg);
+    background-color: #f8f9fa;
 }
+
+html.dark-mode .site-footer {
+    background-color: #242424 !important;
+    border-top-color: #333 !important;
+}
+
+    html.dark-mode .site-footer hr {
+        border-color: #333 !important;
+        opacity: .4;
+    }
 
 .footer-link {
     color: var(--bs-body-color);
@@ -363,11 +374,7 @@ html.dark-mode .adv-search-table .rating-cell .text-warning {
         color: var(--bs-primary);
     }
 
-@media (prefers-color-scheme: dark) {
-    .site-footer .bi {
-        opacity: .9;
-    }
-}
+
 
 
 

@@ -5,7 +5,7 @@ namespace WebNovels.Services.NovelServices
 {
     public interface INovelService
     {
-        Task<List<Novel>> GetAllNovelsAsync(string? searchQuery, int page, int pageSize);
+        Task<List<Novel>> GetAllNovelsAsync(string? searchQuery, int page, int pageSize, string sort = "newest");
         Task<int> GetTotalNovelsCountAsync(string? searchQuery);
 
         Task<Novel?> GetNovelByIdAsync(int id, string? currentUserId = null);

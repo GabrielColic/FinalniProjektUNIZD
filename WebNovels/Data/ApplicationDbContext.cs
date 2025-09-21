@@ -40,7 +40,7 @@ namespace WebNovels.Data
                 .HasOne(n => n.Author)
                 .WithMany()
                 .HasForeignKey(n => n.AuthorId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Chapter>()
                 .HasOne(c => c.Novel)
@@ -60,13 +60,13 @@ namespace WebNovels.Data
                 .HasOne(c => c.Chapter)
                 .WithMany()
                 .HasForeignKey(c => c.ChapterId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Comment>()
                 .HasOne(c => c.User)
                 .WithMany()
                 .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             builder.Entity<Comment>()
                 .HasOne(c => c.ParentComment)
@@ -106,7 +106,7 @@ namespace WebNovels.Data
                 .HasOne(b => b.User)
                 .WithMany()
                 .HasForeignKey(b => b.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             builder.Entity<ChapterDailyView>()
                 .Property(x => x.Day)
@@ -114,13 +114,14 @@ namespace WebNovels.Data
 
             builder.Entity<ChapterDailyView>()
                 .HasIndex(x => new { x.UserId, x.ChapterId, x.Day })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[UserId] IS NOT NULL");
 
             builder.Entity<ChapterDailyView>()
                 .HasOne<Chapter>()
                 .WithMany()
                 .HasForeignKey(x => x.ChapterId)
-                .OnDelete(DeleteBehavior.NoAction); 
+                .OnDelete(DeleteBehavior.NoAction);
 
             builder.Entity<ChapterDailyView>()
                 .HasOne<Novel>()
@@ -132,13 +133,14 @@ namespace WebNovels.Data
                 .HasOne<ApplicationUser>()
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.SetNull);
+
 
             builder.Entity<Notification>()
                 .HasOne(n => n.User)
                 .WithMany()
                 .HasForeignKey(n => n.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             builder.Entity<Notification>()
                 .HasOne(n => n.Novel)
@@ -150,7 +152,7 @@ namespace WebNovels.Data
                 .HasOne(n => n.Chapter)
                 .WithMany()
                 .HasForeignKey(n => n.ChapterId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Notification>()
                 .HasIndex(n => new { n.UserId, n.IsRead, n.CreatedUtc });
@@ -175,7 +177,7 @@ namespace WebNovels.Data
                 e.HasOne(r => r.User)
                     .WithMany()
                     .HasForeignKey(r => r.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                    .OnDelete(DeleteBehavior.NoAction);
             });
 
 

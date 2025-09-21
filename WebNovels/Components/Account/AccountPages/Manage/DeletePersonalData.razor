@@ -10,6 +10,9 @@
 @inject IdentityUserAccessor UserAccessor
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<DeletePersonalData> Logger
+@inject ApplicationDbContext Db
+@inject AccountCleanupService Cleanup
+
 
 <PageTitle>Delete Personal Data</PageTitle>
 
@@ -65,19 +68,27 @@
             return;
         }
 
+        await using var tx = await Db.Database.BeginTransactionAsync();
+
+        await Cleanup.CleanupUserActivityAsync(user.Id);
+
         var result = await UserManager.DeleteAsync(user);
         if (!result.Succeeded)
         {
+            await tx.RollbackAsync();
             throw new InvalidOperationException("Unexpected error occurred deleting user.");
         }
+
+        await tx.CommitAsync();
 
         await SignInManager.SignOutAsync();
 
         var userId = await UserManager.GetUserIdAsync(user);
         Logger.LogInformation("User with ID '{UserId}' deleted themselves.", userId);
 
-        RedirectManager.RedirectToCurrentPage();
+        RedirectManager.RedirectTo("");
     }
+
 
     private sealed class InputModel
     {

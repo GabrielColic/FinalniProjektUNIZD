@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebNovels.Data;
 
@@ -11,9 +12,11 @@ using WebNovels.Data;
 namespace WebNovels.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250921104307_UserDelete_CascadeTree_Fix")]
+    partial class UserDelete_CascadeTree_Fix
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,7 +37,7 @@ namespace WebNovels.Migrations
 
                     b.HasIndex("NovelsId");
 
-                    b.ToTable("GenreNovel", (string)null);
+                    b.ToTable("GenreNovel");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -271,7 +274,7 @@ namespace WebNovels.Migrations
                     b.HasIndex("UserId", "NovelId")
                         .IsUnique();
 
-                    b.ToTable("Bookmarks", (string)null);
+                    b.ToTable("Bookmarks");
                 });
 
             modelBuilder.Entity("WebNovels.Models.Chapter", b =>
@@ -306,7 +309,7 @@ namespace WebNovels.Migrations
 
                     b.HasIndex("NovelId");
 
-                    b.ToTable("Chapters", (string)null);
+                    b.ToTable("Chapters");
                 });
 
             modelBuilder.Entity("WebNovels.Models.ChapterDailyView", b =>
@@ -342,7 +345,7 @@ namespace WebNovels.Migrations
                         .IsUnique()
                         .HasFilter("[UserId] IS NOT NULL");
 
-                    b.ToTable("ChapterDailyViews", (string)null);
+                    b.ToTable("ChapterDailyViews");
                 });
 
             modelBuilder.Entity("WebNovels.Models.Comment", b =>
@@ -391,7 +394,7 @@ namespace WebNovels.Migrations
 
                     b.HasIndex("ChapterId", "RootCommentId", "CreatedAt");
 
-                    b.ToTable("Comments", null, t =>
+                    b.ToTable("Comments", t =>
                         {
                             t.HasCheckConstraint("CK_Comment_Depth_NonNegative", "[Depth] >= 0");
                         });
@@ -412,7 +415,7 @@ namespace WebNovels.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Genres", (string)null);
+                    b.ToTable("Genres");
 
                     b.HasData(
                         new
@@ -473,7 +476,7 @@ namespace WebNovels.Migrations
 
                     b.HasIndex("UserId", "IsRead", "CreatedUtc");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("WebNovels.Models.Novel", b =>
@@ -512,7 +515,7 @@ namespace WebNovels.Migrations
 
                     b.HasIndex("ReadCount");
 
-                    b.ToTable("Novels", null, t =>
+                    b.ToTable("Novels", t =>
                         {
                             t.HasCheckConstraint("CK_Novel_ReadCount_NonNegative", "[ReadCount] >= 0");
                         });
@@ -558,7 +561,7 @@ namespace WebNovels.Migrations
                     b.HasIndex("NovelId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("Reviews", (string)null);
+                    b.ToTable("Reviews");
                 });
 
             modelBuilder.Entity("GenreNovel", b =>

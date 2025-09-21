@@ -17,21 +17,47 @@ namespace WebNovels.Services.NovelServices
             _fileUploadService = fileUploadService;
         }
 
-        public async Task<List<Novel>> GetAllNovelsAsync(string? searchQuery, int page, int pageSize)
+        public async Task<List<Novel>> GetAllNovelsAsync(string? searchQuery, int page, int pageSize, string sort = "newest")
         {
-            var query = _db.Novels.Include(n => n.Author).Include(n => n.Genres).AsQueryable();
+            var query = _db.Novels
+                .AsNoTracking()
+                .Include(n => n.Author)
+                .Include(n => n.Genres)
+                .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchQuery))
             {
-                query = query.Where(n => n.Title.Contains(searchQuery));
+                var term = searchQuery.Trim();
+                query = query.Where(n =>
+                    n.Title.Contains(term) ||
+                    (n.Author != null && n.Author.UserName.Contains(term)));
             }
 
+            query = sort switch
+            {
+                "oldest" => query.OrderBy(n => n.CreatedAt),
+                "title_asc" => query.OrderBy(n => n.Title),
+                "title_desc" => query.OrderByDescending(n => n.Title),
+                "reads" => query.OrderByDescending(n => n.ReadCount).ThenBy(n => n.Title),
+
+                "rating_desc" => query
+                    .OrderByDescending(n => n.Reviews.Any() ? n.Reviews.Average(r => r.Rating) : 0)
+                    .ThenByDescending(n => n.Reviews.Count())
+                    .ThenBy(n => n.Title),
+                "rating_asc" => query
+                    .OrderBy(n => n.Reviews.Any() ? n.Reviews.Average(r => r.Rating) : 0)
+                    .ThenBy(n => n.Reviews.Count())
+                    .ThenBy(n => n.Title),
+
+                _ => query.OrderByDescending(n => n.CreatedAt)
+            };
+
             return await query
-                .OrderByDescending(n => n.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
         }
+
 
         public async Task<int> GetTotalNovelsCountAsync(string? searchQuery)
         {
