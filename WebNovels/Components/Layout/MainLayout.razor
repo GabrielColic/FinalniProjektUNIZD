@@ -1,6 +1,8 @@
 ﻿@inherits LayoutComponentBase
+@using WebNovels.Components.Pages.Shared
 
-<div class="page">
+
+<div class="page min-vh-100">
     <header>
         <NavMenu />
     </header>
@@ -10,6 +12,8 @@
             @Body
         </article>
     </main>
+
+    <Footer />
 </div>
 
 <div id="blazor-error-ui">

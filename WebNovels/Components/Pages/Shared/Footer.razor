@@ -1,0 +1,46 @@
+﻿@inject NavigationManager Nav
+
+<footer class="site-footer border-top mt-4">
+    <div class="container py-4">
+        <div class="row g-3">
+            <div class="col-12 col-md-7">
+                <a class="navbar-brand text-decoration-none fw-bold me-2" href="/">WebRomani</a>
+                <p class="text-body-secondary mb-2 small">
+                    Read your favorite web novels.
+                </p>
+                <div class="d-flex gap-3">
+                    <a class="footer-icon-link" href="https://twitter.com" target="_blank" rel="noopener" aria-label="Twitter">
+                        <i class="bi bi-twitter"></i>
+                    </a>
+                    <a class="footer-icon-link" href="mailto:hello@example.com" aria-label="Email">
+                        <i class="bi bi-envelope"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-5">
+                <h6 class="text-uppercase small fw-semibold mb-2">Legal</h6>
+                <ul class="list-unstyled small mb-0">
+                    <li><a class="footer-link" href="/legal/terms">Terms</a></li>
+                    <li><a class="footer-link" href="/legal/privacy">Privacy</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <hr class="my-3" />
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center small">
+            <span class="text-body-secondary">© @DateTime.UtcNow.Year WebRomani</span>
+            <button type="button"
+                    class="btn btn-link p-0 footer-link"
+                    onclick="window.scrollTo({ top: 0, left: 0, behavior: 'smooth' })">
+                <i class="bi bi-arrow-up-short"></i> Back to top
+            </button>
+        </div>
+    </div>
+</footer>
+
+
+@code {
+    
+}

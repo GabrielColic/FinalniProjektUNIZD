@@ -3,6 +3,9 @@
 @using WebNovels.Models
 @using WebNovels.Services
 @using WebNovels.Services.NovelServices
+@using WebNovels.Services.ReviewServices
+@using WebNovels.Components.Pages.Shared
+@inject IReviewService ReviewService
 @inject INovelService NovelService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
@@ -25,61 +28,92 @@
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Cover Image</th>
-                <th>Title</th>
-                <th>Genres</th>
-                <th>Author</th>
-                <th>Created</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var novel in novels)
-            {
+    <div class="adv-search-wrap">
+        <table class="table table-sm align-middle adv-search-table">
+            <colgroup>
+                <col class="col-cover" />     @* 56px cover *@
+                <col class="col-title" />     @* Title with clamp width *@
+                <col class="col-min" />       @* Author (shrink) *@
+                <col class="col-min" />       @* Rating (shrink) *@
+                <col class="col-genres" />    @* Genres flex within cap *@
+                <col class="col-min" />       @* Created *@
+                <col class="col-min" />       @* Actions *@
+            </colgroup>
+            <thead>
                 <tr>
-                    <img src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
-                         alt="Cover"
-                         class="img-thumbnail"
-                         style="width: 150px; height: 150px; object-fit: cover;" />
-                    <td>
-                        <a href="/novels/details/@novel.Id"
-                           target="_blank"
-                           rel="noopener"
-                           class="text-decoration-none fw-bold">
-                            @novel.Title
-                        </a>
-                    </td>
-
-                    <td>
-                        @if (novel.Genres != null && novel.Genres.Any())
-                        {
-                            var topGenres = novel.Genres.Take(2).ToList();
-                            foreach (var genre in topGenres)
-                            {
-                                <span class="badge bg-secondary me-1">@genre.Name</span>
-                            }
-                            if (novel.Genres.Count > 2)
-                            {
-                                <span class="badge bg-light text-muted">+@(@novel.Genres.Count - 2)</span>
-                            }
-                        }
-                    </td>
-                    <td>@novel.Author?.UserName</td>
-                    <td>@novel.CreatedAt.ToShortDateString()</td>
-                    <td>
-                        <a href="/novels/details/@novel.Id">View</a>
-                        @if (novel.AuthorId == currentUserId)
-                        {
-                            <text> | <a href="/novels/edit/@novel.Id">Edit</a> | <a href="/novels/delete/@novel.Id">Delete</a></text>
-                        }
-                    </td>
+                    <th>Cover</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Rating</th>
+                    <th>Genres</th>
+                    <th>Created</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var novel in novels)
+                {
+                    <tr>
+                        <td>
+                            <img class="cover-thumb"
+                                 src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
+                                 alt="@($"{novel.Title} cover")" loading="lazy" />
+
+                        </td>
+
+                        <td class="title-cell">
+                            <div class="text-truncate" title="@novel.Title">
+                                <a href="/novels/details/@novel.Id" target="_blank" rel="noopener" class="text-decoration-none fw-bold">
+                                    @novel.Title
+                                </a>
+                            </div>
+                        </td>
+
+                        <td class="author-cell text-muted">@novel.Author?.UserName</td>
+
+                        <td class="rating-cell">
+                            @{
+                                if (ratingLookup.TryGetValue(novel.Id, out var s) && s.Count > 0)
+                                {
+                                    <StarRating Rating="s.Average" Count="s.Count" />
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">No ratings</span>
+                                }
+                            }
+                        </td>
+
+                        <td class="genres-cell text-wrap">
+                            @if (novel.Genres != null && novel.Genres.Any())
+                            {
+                                var topGenres = novel.Genres.Take(2).ToList();
+                                foreach (var genre in topGenres)
+                                {
+                                    <span class="badge bg-secondary me-1 mb-1">@genre.Name</span>
+                                }
+                                if (novel.Genres.Count > 2)
+                                {
+                                    <span class="badge bg-light text-muted mb-1">+@(@novel.Genres.Count - 2)</span>
+                                }
+                            }
+                        </td>
+
+                        <td class="created-cell">@novel.CreatedAt.ToShortDateString()</td>
+
+                        <td class="actions-cell">
+                            <a href="/novels/details/@novel.Id" class="btn btn-sm btn-outline-primary">View</a>
+                            @if (novel.AuthorId == currentUserId)
+                            {
+                                <text> | <a href="/novels/edit/@novel.Id" class="btn btn-sm btn-outline-primary">Edit</a> | <a href="/novels/delete/@novel.Id" class="btn btn-sm btn-outline-danger">Delete</a></text>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
 
     <Pagination TotalPages="@totalPages"
                 CurrentPage="@currentPage"
@@ -96,6 +130,8 @@ else
     private int currentPage = 1;
     private int pageSize = 10;
     private int totalPages;
+    private Dictionary<int, (double Average, int Count)> ratingLookup = new();
+
 
     protected override async Task OnParametersSetAsync()
     {
@@ -107,6 +143,7 @@ else
         currentPage = page ?? 1;
 
         novels = await NovelService.GetAllNovelsAsync(searchQuery, currentPage, pageSize);
+        ratingLookup = await ReviewService.GetSummariesAsync(novels.Select(n => n.Id));
         var totalCount = await NovelService.GetTotalNovelsCountAsync(searchQuery);
         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
     }

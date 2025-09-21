@@ -15,5 +15,7 @@
             int novelId, string userId, int rating, string? title, string body);
 
         Task<bool> DeleteAsync(int reviewId, string userId);
+
+        Task<Dictionary<int, (double Average, int Count)>> GetSummariesAsync(IEnumerable<int> novelIds);
     }
 }

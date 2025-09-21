@@ -1,0 +1,39 @@
+﻿@using System.Globalization
+
+<span class="d-inline-flex align-items-center" title="@Title" aria-label="@Title" role="img">
+    @for (var i = 1; i <= MaxStars; i++)
+    {
+        var fill = GetFill(i, Rating ?? 0);
+        var icon = fill switch
+        {
+            1 => "bi bi-star-fill",
+            0.5 => "bi bi-star-half",
+            _ => "bi bi-star"
+        };
+        <i class="@icon me-1 text-warning"></i>
+    }
+    @if (ShowCount && Count.HasValue)
+    {
+        <span class="ms-1 text-muted">(@Count.Value)</span>
+    }
+</span>
+
+@code {
+    [Parameter] public double? Rating { get; set; }
+    [Parameter] public int? Count { get; set; }
+    [Parameter] public int MaxStars { get; set; } = 5;
+    [Parameter] public bool ShowCount { get; set; } = true;
+
+    string Title => Rating.HasValue
+        ? $"{Rating.Value.ToString("0.0", CultureInfo.InvariantCulture)} / {MaxStars}"
+        : "Not rated";
+
+    static double GetFill(int starIndex, double rating)
+    {
+        var diff = rating - (starIndex - 1);
+        if (diff >= 1) return 1;
+        if (diff >= 0.75) return 1;
+        if (diff >= 0.25) return 0.5;
+        return 0;
+    }
+}

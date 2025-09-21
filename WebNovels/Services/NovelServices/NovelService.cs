@@ -161,8 +161,19 @@ namespace WebNovels.Services.NovelServices
                 "title_asc" => query.OrderBy(n => n.Title),
                 "title_desc" => query.OrderByDescending(n => n.Title),
                 "reads" => query.OrderByDescending(n => n.ReadCount).ThenBy(n => n.Title),
+
+                "rating_desc" => query
+                    .OrderByDescending(n => n.Reviews.Any() ? n.Reviews.Average(r => r.Rating) : 0)
+                    .ThenByDescending(n => n.Reviews.Count())
+                    .ThenBy(n => n.Title),
+                "rating_asc" => query
+                    .OrderBy(n => n.Reviews.Any() ? n.Reviews.Average(r => r.Rating) : 0)
+                    .ThenBy(n => n.Reviews.Count())
+                    .ThenBy(n => n.Title),
+
                 _ => query.OrderByDescending(n => n.CreatedAt)
             };
+
 
             return await query
                 .Skip((page - 1) * pageSize)

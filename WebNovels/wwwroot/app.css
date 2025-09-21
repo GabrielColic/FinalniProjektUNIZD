@@ -306,4 +306,70 @@ html.dark-mode .chapter-content {
         border-top: 1px solid #444 !important;
     }
 
+.adv-search-table {
+    table-layout: fixed;
+}
+    .adv-search-table th,
+    .adv-search-table td {
+        padding: .5rem .6rem;
+        vertical-align: middle;
+    }
+
+.cover-thumb { 
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: .25rem;
+    display: block;
+}
+
+.adv-search-table .title-cell .text-truncate {
+    max-width: 100%;
+}
+
+.adv-search-table .rating-cell i[class^="bi-star"] {
+    margin-right: .15rem;
+    font-size: .95rem;
+    line-height: 1;
+}
+
+.adv-search-table .genres-cell .badge {
+    margin-bottom: .25rem;
+}
+
+html.dark-mode .adv-search-table .rating-cell .text-warning {
+    color: #f6c544 !important;
+}
+
+.site-footer {
+    background: var(--bs-body-bg);
+}
+
+.footer-link {
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+
+    .footer-link:hover {
+        text-decoration: underline;
+    }
+
+.footer-icon-link {
+    font-size: 1.15rem;
+    color: var(--bs-body-color);
+}
+
+    .footer-icon-link:hover {
+        color: var(--bs-primary);
+    }
+
+@media (prefers-color-scheme: dark) {
+    .site-footer .bi {
+        opacity: .9;
+    }
+}
+
+
+
+
 

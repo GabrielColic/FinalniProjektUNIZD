@@ -2,6 +2,9 @@
 @using System.Linq
 @using WebNovels.Models
 @using WebNovels.Services.NovelServices
+@using WebNovels.Services.ReviewServices
+@using WebNovels.Components.Pages.Shared
+@inject IReviewService ReviewService
 @inject INovelService NovelService
 @inject NavigationManager Nav
 
@@ -61,7 +64,8 @@ else
                                     <img src="@(!string.IsNullOrEmpty(n.CoverImagePath) ? n.CoverImagePath : "/images/default-cover.png")"
                                          class="img-fluid rounded-start"
                                          style="height: 100%; width: 100%; object-fit: cover;"
-                                         alt="Cover of @n.Title" />
+                                         alt="Cover of @n.Title"
+                                         loading="lazy" decoding="async" />
                                 </div>
 
                                 <div class="col-8 d-flex flex-column">
@@ -84,6 +88,20 @@ else
                                                 <span class="text-truncate">@string.Join(", ", n.Genres.Select(g => g.Name).Take(2))</span>
                                             }
                                         </div>
+
+                                        <div class="mt-1">
+                                            @{
+                                                if (ratingLookup.TryGetValue(n.Id, out var s) && s.Count > 0)
+                                                {
+                                                    <StarRating Rating="s.Average" Count="s.Count" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted small">No ratings</span>
+                                                }
+                                            }
+                                        </div>
+
                                     </div>
 
                                     <div class="card-footer bg-transparent border-0 py-2 mt-auto"></div>
@@ -139,6 +157,20 @@ else
                                                 <span class="text-truncate">@string.Join(", ", novel.Genres.Select(g => g.Name).Take(2))</span>
                                             }
                                         </div>
+
+                                        <div class="mt-1">
+                                            @{
+                                                if (ratingLookup.TryGetValue(novel.Id, out var s) && s.Count > 0)
+                                                {
+                                                    <StarRating Rating="s.Average" Count="s.Count" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted small">No ratings</span>
+                                                }
+                                            }
+                                        </div>
+
                                     </div>
                                     <div class="card-footer bg-transparent border-0 py-2 mt-auto"></div>
                                 </div>
@@ -160,6 +192,7 @@ else
     private bool isLoading = true;
     private List<Novel>? mostRead;
     private List<(Novel Novel, int ReadCount)>? trending;
+    private Dictionary<int, (double Average, int Count)> ratingLookup = new();
 
 
     protected override async Task OnInitializedAsync()
@@ -167,6 +200,14 @@ else
         isLoading = true;
         mostRead = await NovelService.GetMostReadNovelsAsync(12);
         trending = await NovelService.GetTrendingNovelsAsync(30, 12);
+
+        var ids =
+        (mostRead ?? new()).Select(n => n.Id)
+        .Concat((trending ?? new()).Select(t => t.Novel.Id))
+        .Distinct();
+
+        ratingLookup = await ReviewService.GetSummariesAsync(ids);
+
         isLoading = false;
     }
 

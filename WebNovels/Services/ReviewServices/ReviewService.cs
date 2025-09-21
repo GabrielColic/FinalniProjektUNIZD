@@ -92,5 +92,26 @@
             await _db.SaveChangesAsync();
             return true;
         }
+
+        public async Task<Dictionary<int, (double Average, int Count)>> GetSummariesAsync(IEnumerable<int> novelIds)
+        {
+            var ids = novelIds.Distinct().ToList();
+            if (ids.Count == 0) return new();
+
+            var rows = await _db.Reviews
+                .AsNoTracking()
+                .Where(r => ids.Contains(r.NovelId))
+                .GroupBy(r => r.NovelId)
+                .Select(g => new
+                {
+                    NovelId = g.Key,
+                    Count = g.Count(),
+                    Average = Math.Round(g.Average(r => (double)r.Rating), 1, MidpointRounding.AwayFromZero)
+                })
+                .ToListAsync();
+
+            return rows.ToDictionary(x => x.NovelId, x => (x.Average, x.Count));
+        }
+
     }
 }

@@ -1,8 +1,11 @@
 ﻿@page "/novels/search"
 @using Microsoft.AspNetCore.Authorization
+@using WebNovels.Components.Pages.Shared
 @using WebNovels.Models
 @using WebNovels.Services
 @using WebNovels.Services.NovelServices
+@using WebNovels.Services.ReviewServices
+@inject IReviewService ReviewService
 @inject INovelService NovelService
 @inject NavigationManager Navigation
 @attribute [Authorize]
@@ -39,6 +42,8 @@
             <option value="oldest">Oldest</option>
             <option value="title_asc">Title A-Z</option>
             <option value="title_desc">Title Z-A</option>
+            <option value="rating_desc">Rating (High → Low)</option>
+            <option value="rating_asc">Rating (Low → High)</option>
         </select>
     </div>
     <div class="col-md-3 align-self-end">
@@ -57,44 +62,87 @@ else if (!filteredNovels.Any())
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Author</th>
-                <th>Genres</th>
-                <th>Created</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var novel in filteredNovels)
-            {
+    <div class="adv-search-wrap">
+        @* optional width cap *@
+        <table class="table table-sm align-middle adv-search-table">
+            <colgroup>
+                <col class="col-cover" />
+                <col class="col-title" />
+                <col class="col-min" />     @* Author *@
+                <col class="col-min" />     @* Rating *@
+                <col class="col-genres" />  @* Genres (flex within cap) *@
+                <col class="col-min" />     @* Created *@
+                <col class="col-min" />     @* Actions *@
+            </colgroup>
+            <thead>
                 <tr>
-                    <td>
-                        <a href="/novels/details/@novel.Id"
-                           target="_blank"
-                           rel="noopener"
-                           class="text-decoration-none fw-bold">
-                            @novel.Title
-                        </a>
-                    </td>
-
-                    <td>@novel.Author?.UserName</td>
-                    <td>
-                        @foreach (var genre in novel.Genres)
-                        {
-                            <span class="badge bg-secondary me-1">@genre.Name</span>
-                        }
-                    </td>
-                    <td>@novel.CreatedAt.ToShortDateString()</td>
-                    <td>
-                        <a class="btn btn-sm btn-outline-primary" href="/novels/details/@novel.Id">View</a>
-                    </td>
+                    <th>Cover</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Rating</th>
+                    <th>Genres</th>
+                    <th>Created</th>
+                    <th></th>
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var novel in filteredNovels)
+                {
+                    <tr>
+                        <td>
+                            <img class="cover-thumb"
+                                 src="@(!string.IsNullOrEmpty(novel.CoverImagePath) ? novel.CoverImagePath : "/images/default-cover.png")"
+                                 alt="Cover" />
+                        </td>
+
+                        <td class="title-cell">
+                            <div class="text-truncate" title="@novel.Title">
+                                <a href="/novels/details/@novel.Id"
+                                   target="_blank"
+                                   rel="noopener"
+                                   class="text-decoration-none fw-bold">
+                                    @novel.Title
+                                </a>
+                            </div>
+                        </td>
+
+                        <td class="author-cell text-muted">@novel.Author?.UserName</td>
+
+                        <td class="rating-cell">
+                            @{
+                                if (ratingLookup.TryGetValue(novel.Id, out var s) && s.Count > 0)
+                                {
+                                    <StarRating Rating="s.Average" Count="s.Count" />
+                                }
+                                else
+                                {
+                                    <span class="text-muted">No ratings</span>
+                                }
+                            }
+                        </td>
+
+                        <td class="genres-cell text-wrap">
+                            @if (novel.Genres?.Any() == true)
+                            {
+                                foreach (var genre in novel.Genres)
+                                {
+                                    <span class="badge bg-secondary me-1 mb-1">@genre.Name</span>
+                                }
+                            }
+                        </td>
+
+                        <td class="created-cell">@novel.CreatedAt.ToShortDateString()</td>
+
+                        <td class="actions-cell">
+                            <a class="btn btn-sm btn-outline-primary" href="/novels/details/@novel.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+
 
     <Pagination TotalPages="@totalPages"
                 CurrentPage="@currentPage"
@@ -113,6 +161,8 @@ else
     private int currentPage = 1;
     private int pageSize = 10;
     private int totalPages;
+    private Dictionary<int, (double Average, int Count)> ratingLookup = new();
+
 
     [Parameter, SupplyParameterFromQuery] public string? title { get; set; }
     [Parameter, SupplyParameterFromQuery] public string? author { get; set; }
@@ -146,6 +196,10 @@ else
             currentPage,
             pageSize
         );
+
+        var summaries = await ReviewService.GetSummariesAsync(filteredNovels.Select(n => n.Id));
+        ratingLookup = summaries;
+
 
         totalPages = (int)Math.Ceiling(
             await NovelService.GetSearchNovelsCountAsync(titleFilter, authorFilter, selectedGenreIds)
